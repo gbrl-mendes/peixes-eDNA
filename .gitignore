@@ -1,7 +1,13 @@
 .Rproj.user
 .Rhistory
 .RData
+*.RData
 .Ruserdata
 *.pdf
 *.png
 *.svg
+*.fastq
+*.fastq.gz
+*.xlsx
+*.csv
+*.html

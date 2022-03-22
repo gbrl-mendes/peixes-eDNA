@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r load myData, include=FALSE}
-load(file = "/home/heron/prjcts/fish_eDNA/analyses/LGC_run5_22dez21/LGC_run5_22dez21-env_2021-12-25_blast.RData")
+load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/env_li_22mar22_17h44.RData")
 ```
 
 
@@ -57,7 +57,7 @@ cutadapt <- "/usr/local/bin/cutadapt"
 # 1 - set outputs and inputs path ----
 
 # use the same path you created on the bash $PRJCT_DIR variable
-analysis_path <- "~/prjcts/fish_eDNA/analyses/LGC_run5_22dez21"
+analysis_path <- "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22"
 
 # create data_folder
 data_path <- paste0(analysis_path,"/data")
@@ -80,21 +80,41 @@ swarm_path <- paste0(results_path,"/swarm")
 if(!dir.exists(swarm_path)) dir.create(swarm_path)
 
 #project name radical
-prjct_rad <-c("LGC_run5_22dez21")
+prjct_rad <-c("li_22mar22")
 
 list.files(analysis_path)
 
 # 2 - indicate where the raw reads are ----
-run_path <- "/home/heron/runs/run5_22dez21"
+run_path <- "/home/gabriel/projetos/peixes-eDNA/raw"
 
 
 
 ## All libs are already demultiplexed
-raw_libs <- "/home/heron/runs/run5_22dez21/raw" # PATH to the directory containing raw fastq files (same as in $RAW_DATA).
+raw_libs <- "/home/gabriel/projetos/peixes-eDNA/raw" # PATH to the directory containing raw fastq files (same as in $RAW_DATA).
 
 #check if these are really the data
 list.files(path = raw_libs)
 
+
+```
+
+```{r, eval=FALSE}
+# Script dispensável para gerar a tabela com as amostras. A tabela final está em peixes-eDNA/analises/li_22mar22/data/LI_primers_n_samples.csv
+
+# tbl_amostras <- read.csv(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/data/run_2_4_5_lagoa_ingleses_v2.csv")
+# 
+# 
+# tbl_amostras %>% colnames()
+# tbl_amostras %>% colnames() %>% paste0(collapse = '",\n"') %>% cat()
+# 
+# 
+# tbl_amostras %>%
+#   select(c("Sample", "Run","Group", "Expedition","Coleta", "Year","Sample.Name", "File_name",
+# "Type", "Point", "Sub.point", "Depth","Num.replicates", "Primer")) %>% 
+#   unique() %>% writexl::write_xlsx(
+#                     path = paste0("/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/data/tbl_amostras_li_22mar22",".xlsx"),
+#                     col_names = TRUE,format_headers = TRUE)
+# 
 
 ```
 
@@ -152,7 +172,7 @@ to a unique value on the  _File_name_, and on the combination of _Tag FWD_ and _
 ## This is the most impotant input on the anlaysis
 ### Required columns with unique values: File_name, (combined) "Tag FWD-Tag REV"
 
-primers_n_samples <- readr::read_csv(file = "/home/heron/prjcts/fish_eDNA/analyses/LGC_run5_22dez21/data/LGC_run5_22dez21-primers_idx_samples.csv")
+primers_n_samples <- readr::read_csv(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/data/LI_primers_n_samples.csv")
 
 
 # chech if is there any duplicated file name ----
@@ -184,7 +204,7 @@ primers_n_samples$File_name[select(primers_n_samples,c("Tag FWD","Tag REV")) %>%
 
 #load primers sequences without Ns ----
 
-primers_seqs <-  Biostrings::readDNAStringSet(filepath = "/home/heron/prjcts/fish_eDNA/analyses/LGC_run5_22dez21/data/neo_miU_indexed_primers.fasta",format = "fasta")
+primers_seqs <-  Biostrings::readDNAStringSet(filepath = "/home/gabriel/projetos/peixes-eDNA/analyses/LGC_run5_22dez21/data/neo_miU_indexed_primers.fasta",format = "fasta")
 
 primers_seqs <- primers_seqs %>% 
   as.data.frame() %>% 
@@ -231,8 +251,8 @@ ulimit -n 1000000
 
 
 cutadapt -e 0.10 -j 79 --no-indels --max-n 0\
- -g file:/home/heron/prjcts/fish_eDNA/analyses/LGC_run5_22dez21/data/neo_miU_indexed_primers.fasta  \
- -G file:/home/heron/prjcts/fish_eDNA/analyses/LGC_run5_22dez21/data/neo_miU_indexed_primers.fasta \
+ -g file:/home/gabriel/projetos/peixes-eDNA/analyses/LGC_run5_22dez21/data/neo_miU_indexed_primers.fasta  \
+ -G file:/home/gabriel/projetos/peixes-eDNA/analyses/LGC_run5_22dez21/data/neo_miU_indexed_primers.fasta \
  -o /home/heron/runs/run5_22dez21/dmux_CDI/{name1}-{name2}.R1.fastq \
  -p /home/heron/runs/run5_22dez21/dmux_CDI/{name1}-{name2}.R2.fastq \
  /home/heron/runs/run5_22dez21/raw/LGC_run5_R1.fastq.gz \
@@ -258,8 +278,8 @@ To avoid merging reads that did no come from the same cluster, we must check rea
 
 
 #list files
-libs_path <- "/home/heron/runs/run5_22dez21/dmux_CDI"
-
+libs_path <- "/home/gabriel/projetos/peixes-eDNA/raw"
+  
 
 all_fnFs <- sort(list.files(libs_path, pattern=".R1.fastq", full.names = TRUE))
 all_fnRs <- sort(list.files(libs_path, pattern=".R2.fastq", full.names = TRUE))
@@ -317,22 +337,22 @@ sample_idx_tbl <- sample_idx_tbl %>%
 
 
 #create dir for recovered paired reads
-dir.create(path = paste0(run_path,"/paired"),showWarnings = TRUE) 
+dir.create(path = paste0(pipe_libs,"/paired"),showWarnings = TRUE) 
 
 
 for (sample in 1:nrow(sample_idx_tbl)) {
 
   sample_idx_tbl$FWD_R1_paired[sample] <-
-    all_fnFs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name F`[sample]),x = all_fnFs)] %>% str_replace(pattern = "dmux_CDI",replacement = "paired")
+    all_fnFs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name F`[sample]),x = all_fnFs)] %>% str_replace(pattern = "raw",replacement = "analises/li_22mar22/data/reads/paired")
 
   sample_idx_tbl$FWD_R2_paired[sample] <-
-    all_fnRs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name F`[sample]),x = all_fnRs)] %>% str_replace(pattern = "dmux_CDI",replacement = "paired")
+    all_fnRs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name F`[sample]),x = all_fnRs)] %>% str_replace(pattern = "raw",replacement = "analises/li_22mar22/data/reads/paired")
 
   sample_idx_tbl$REV_R1_paired[sample] <-
-    all_fnFs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name R`[sample]),x = all_fnFs)] %>% str_replace(pattern = "dmux_CDI",replacement = "paired")
+    all_fnFs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name R`[sample]),x = all_fnFs)] %>% str_replace(pattern = "raw",replacement = "analises/li_22mar22/data/reads/paired")
 
   sample_idx_tbl$REV_R2_paired[sample] <-
-    all_fnRs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name R`[sample]),x = all_fnRs)] %>% str_replace(pattern = "dmux_CDI",replacement = "paired")
+    all_fnRs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name R`[sample]),x = all_fnRs)] %>% str_replace(pattern = "raw",replacement = "analises/li_22mar22/data/reads/paired")
 
 }
 
@@ -423,44 +443,19 @@ sample_idx_tbl$File_name %>% unique() %>% sort() %>% paste0(collapse = '",\n"') 
 
 
 sample_levels <- c(
-"be_05_08_21","be_12_07_21","be_13_07_21","be_15_07_21","bf_18_05_21","bf_19_05_21",
-"branco_extracao_dez21","branco_filtragem_dez21","branco_pcr_dez21",
-"IR10_fev21","L1_nov21","L1_out21",
-"L2_nov21","L2_out21",
-"L3_nov21","L3_out21",
-"L4_nov21","L4_out21",
-"Turbina_1_fev21","Turbina_1_maio21","Turbina_2_fev21","Turbina_2_mai21",
-"Turbina_3_fev21","Turbina_3_maio21","Turbina_ago21","Turbina_fev_20",
-"SF02.1M","SF02.1N","SFO1.1M","SFO1.1N","SFO1.2M","SFO1.2N",
-"SFO10.1M","SFO10.1N","SFO10.2M","SFO10.2N","SFO11.1M","SFO11.1N",
-"SFO12.1M","SFO12.1N","SFO13.2M","SFO13.2N","SFO14.1M","SFO14.1N",
-"SFO15.1M","SFO15.1N","SFO15.2M","SFO15.2N",
-"SFO17.1M","SFO17.1N","SFO17.2M","SFO17.2N",
-"SFO18.1M","SFO18.1N","SFO18.2M","SFO18.2N",
-"SFO19.1M","SFO19.1N","SFO19.2M","SFO19.2N",
-"SFO2.2M","SFO2.2N","SFO20.1M",
-"SFO20.1N","SFO20.2M","SFO20.2N",
-"SFO23.1M","SFO23.1N","SFO23.2M","SFO23.2N",
-"SFO3.1M","SFO3.1N","SFO4.1M","SFO4.1N","SFO4.2M","SFO4.2N",
-"SFO5.1M","SFO5.1N","SFO5.2M","SFO5.2N","SFO6.1M","SFO6.1N",
-"SFO7.2M","SFO7.2N","SFO8.1M","SFO8.1N","SFO8.2M","SFO8.2N",
-"SFO9.2M","SFO9.2N","SFL1.1M","SFL1.1N","SFL10.1M","SFL10.1N",
-"SFL11.1M","SFL11.1N","SFL12.1M","SFL12.1N",
-"SFL13.1M","SFL13.1N","SFL13.2M","SFL13.2N",
-"SFL14.1M","SFL14.1N","SFL14.2M","SFL14.2N",
-"SFL15.1M","SFL15.1N","SFL15.2M","SFL15.2N",
-"SFL17.1M","SFL17.1N","SFL17.2M","SFL17.2N",
-"SFL18.1M","SFL18.1N","SFL18.2M","SFL18.2N",
-"SFL2.2M","SFL2.2N","SFL20.2M","SFL20.2N",
-"SFL22.1M","SFL22.1N","SFL23.1M","SFL23.1N",
-"SFL3.1M","SFL3.1N","SFL4.1M","SFL4.1N","SFL4.2M","SFL4.2N",
-"SFL5.1M","SFL5.1N","SFL5.2M","SFL5.2N",
-"SFL6.1M","SFL6.1N","SFL6.2M","SFL6.2N",
-"SFL7.2M","SFL7.2N",
-"SFL8.1M","SFL8.1N","SFL8.2M","SFL8.2N",
-"CN1M","CN1N","CN2M","CN2N","CN3M","CN3N",
-"CN4M","CN4N","CN5M","CN5N","CN6M","CN6N",
-"CN7M","CN7N","positive_control")
+"L1_nov_dec_20_mi",
+"L1_nov_dec_20_neo",
+"L2_nov20",
+"L2_dez20",
+"L1_out21",
+"L2_out21",
+"L3_out21",
+"L4_out21",
+"L1_nov21",
+"L2_nov21",
+"L3_nov21",
+"L4_nov21"
+)
 ```
 
 ## Working with clean reads
@@ -621,23 +616,6 @@ sumSequenceTables <- function(table1, table2, ..., orderBy = "abundance") {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Generate sequence tables ----
 
 # FWD & REV oriented mergers
@@ -737,12 +715,12 @@ sample_idx_tbl$File_name %>% unique()
 
 
 # Inspect distribution of sequence lengths
-table(nchar(getSequences(R1_seqtab))) %>% plot()
-table(nchar(getSequences(R2_seqtab))) %>% plot()
+# table(nchar(getSequences(R1_seqtab))) %>% plot()
+# table(nchar(getSequences(R2_seqtab))) %>% plot()
 table(nchar(getSequences(run_seqtab_REV))) %>% plot()
 table(nchar(getSequences(run_seqtab_FWD))) %>% plot()
 table(nchar(getSequences(mergers_seqtab))) %>% plot()
-table(nchar(getSequences(all_seqtab))) %>% plot()
+# table(nchar(getSequences(all_seqtab))) %>% plot()
 
 ```
 
@@ -782,26 +760,26 @@ table(nchar(getSequences(mergers_seqtab.nochim))) %>% plot()
 rownames(mergers_seqtab.nochim)
 rownames(mergers_seqtab)
 
-
-#I still do not understand how is possible to have bimeras on single reads ASVs
-
-R1_seqtab.nochim <- removeBimeraDenovo(R1_seqtab, method="consensus", multithread=TRUE, verbose=TRUE)  #minFoldParentOverAbundance??
-dim(R1_seqtab.nochim)
-sum(R1_seqtab.nochim)/sum(R1_seqtab) # =  0.9567811 , perda de 4.4% na abundancia -> estes 4.4% são quimeras
-#count proportion of ASVs of a given length
-table(nchar(getSequences(R1_seqtab.nochim)))
-table(nchar(getSequences(R1_seqtab.nochim))) %>% plot()
-rownames(R1_seqtab.nochim)
-rownames(R1_seqtab)
-
-R2_seqtab.nochim <- removeBimeraDenovo(R2_seqtab, method="consensus", multithread=TRUE, verbose=TRUE)  #minFoldParentOverAbundance??
-dim(R2_seqtab.nochim)
-sum(R2_seqtab.nochim)/sum(R2_seqtab) # =  0.9567811 , perda de 4.4% na abundancia -> estes 4.4% são quimeras
-#count proportion of ASVs of a given length
-table(nchar(getSequences(R2_seqtab.nochim)))
-table(nchar(getSequences(R2_seqtab.nochim))) %>% plot()
-rownames(R2_seqtab.nochim)
-rownames(R2_seqtab)
+# 
+# #I still do not understand how is possible to have bimeras on single reads ASVs
+# 
+# R1_seqtab.nochim <- removeBimeraDenovo(R1_seqtab, method="consensus", multithread=TRUE, verbose=TRUE)  #minFoldParentOverAbundance??
+# dim(R1_seqtab.nochim)
+# sum(R1_seqtab.nochim)/sum(R1_seqtab) # =  0.9567811 , perda de 4.4% na abundancia -> estes 4.4% são quimeras
+# #count proportion of ASVs of a given length
+# table(nchar(getSequences(R1_seqtab.nochim)))
+# table(nchar(getSequences(R1_seqtab.nochim))) %>% plot()
+# rownames(R1_seqtab.nochim)
+# rownames(R1_seqtab)
+# 
+# R2_seqtab.nochim <- removeBimeraDenovo(R2_seqtab, method="consensus", multithread=TRUE, verbose=TRUE)  #minFoldParentOverAbundance??
+# dim(R2_seqtab.nochim)
+# sum(R2_seqtab.nochim)/sum(R2_seqtab) # =  0.9567811 , perda de 4.4% na abundancia -> estes 4.4% são quimeras
+# #count proportion of ASVs of a given length
+# table(nchar(getSequences(R2_seqtab.nochim)))
+# table(nchar(getSequences(R2_seqtab.nochim))) %>% plot()
+# rownames(R2_seqtab.nochim)
+# rownames(R2_seqtab)
 
 
 # View(seqtab.nochim)
@@ -934,9 +912,9 @@ tbl_Non_chimeric <- (rowSums(mergers_seqtab.nochim) %>% as_tibble(rownames = "Fi
 
 
 
-tbl_Non_chi_R1 <- (rowSums(R1_seqtab.nochim) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Non-chi_R1"))
-
-tbl_Non_chi_R2 <- (rowSums(R2_seqtab.nochim) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Non-chi_R2"))
+# tbl_Non_chi_R1 <- (rowSums(R1_seqtab.nochim) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Non-chi_R1"))
+# 
+# tbl_Non_chi_R2 <- (rowSums(R2_seqtab.nochim) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Non-chi_R2"))
 
 
 # tbl_R1_R2_merged <- (rowSums(all_seqtab) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "R1 + R2 + merged non-chimeric"))
@@ -962,8 +940,8 @@ all_track <-
   left_join(tbl_Merged, by = "File_name") %>%
   # left_join(tbl_R1_R2_merged,by = "File_name") %>% 
   left_join(tbl_Non_chimeric, by = "File_name") %>% 
-  left_join(tbl_Non_chi_R1, by = "File_name") %>% 
-  left_join(tbl_Non_chi_R2, by = "File_name") %>% 
+  # left_join(tbl_Non_chi_R1, by = "File_name") %>% 
+  # left_join(tbl_Non_chi_R2, by = "File_name") %>% 
   left_join(unique(primers_n_samples[c("Primer","File_name")]),by = "File_name") 
 
 
@@ -974,7 +952,7 @@ all_track <-
 
 
 
-colnames(all_track) %>%  paste0(collapse = '\n') %>% cat
+colnames(all_track) %>%  paste0(collapse = '",\n"') %>% cat
 # colnames(all_track) <- c("File_name", 
 #                          "Raw FWD_R1", "Raw FWD_R2", "Raw REV_R1", "Raw REV_R2",
 #                          "Denoised FWD_R1", "Denoised FWD_R2",
@@ -986,37 +964,36 @@ colnames(all_track) %>%  paste0(collapse = '\n') %>% cat
 #                          "Non-chi_R2",
 #                          "Non-chimeric", "Primer")
 # 
-# 
+# # 
 # all_track %>% dplyr::rename(
-# File_name
-# Raw FWD_R1
-# Raw FWD_R2
-# Raw REV_R1
-# Raw REV_R2
-# Denoised FWD_R1
-# Denoised FWD_R2
-# Denoised REV_R1
-# Denoised REV_R2
-# Merged FWD
-# Merged REV
-# Unique Merged
-# Non-chimeric
-# Non-chi_R1
-# Non-chi_R2
-# Primer
+# "File_name",
+# "Raw FWD_R1",
+# "Raw FWD_R2",
+# "Raw REV_R1",
+# "Raw REV_R2",
+# "Denoised FWD_R1",
+# "Denoised FWD_R2",
+# "Denoised REV_R1",
+# "Denoised REV_R2",
+# "Merged FWD",
+# "Merged REV",
+# "Unique Merged",
+# "Non-chimeric",
+# "Primer"
 # )
 
 
 
 all_track <- all_track %>% select(c("File_name", "Primer",
-                                    "Raw FWD_R1", "Raw FWD_R2", "Raw REV_R1", "Raw REV_R2",
+                                    "Raw FWD_R1", "Raw FWD_R2", 
+                                    "Raw REV_R1", "Raw REV_R2",
                                     "Denoised FWD_R1", "Denoised FWD_R2",
                                     "Denoised REV_R1", "Denoised REV_R2", 
                                     "Merged FWD", "Merged REV",
                                     "Unique Merged",
                                     # "R1 + R2 + merged non-chimeric",
-                                    "Non-chi_R1",
-                                    "Non-chi_R2",
+                                    # "Non-chi_R1",
+                                    # "Non-chi_R2",
                                     "Non-chimeric"))
 
 
@@ -1026,7 +1003,7 @@ all_track <- all_track %>% select(c("File_name", "Primer",
 #save counts table
 
 writexl::write_xlsx(x = all_track,
-                    path = paste0(results_path,"/",prjct_rad,"-reads_and_seqs_counts",Sys.Date(),".xlsx"),
+                    path = paste0(results_path,"/",prjct_rad,"-reads_and_seqs_counts-",Sys.Date(),".xlsx"),
                     col_names = TRUE,format_headers = TRUE)
 
 
@@ -1090,14 +1067,14 @@ colnames(track_tbl)
         "Merged FWD", "Merged REV",
         "Unique Merged",
         # "R1 + R2 + merged non-chimeric", 
-        "Non-chi_R1",
-        "Non-chi_R2",
+        # "Non-chi_R1",
+        # "Non-chi_R2",
         "Non-chimeric") %>%
   mutate(Stage = factor(Stage, levels = c(
     # "R1 + R2 + merged non-chimeric",
                                           "Non-chimeric",
-                                          "Non-chi_R1",
-                                          "Non-chi_R2",
+                                          # "Non-chi_R1",
+                                          # "Non-chi_R2",
                                           "Unique Merged", 
                                           "Merged FWD", "Merged REV", 
                                           "Denoised REV_R2", "Denoised REV_R1",
@@ -1121,7 +1098,7 @@ colnames(track_tbl)
     # scale_fill_viridis(discrete = TRUE,option = "viridis",alpha = 0.75,) +
     # scale_fill_brewer(palette = "Set2")+
     scale_fill_manual(                     
-      values = alpha(colour = inferno8[c(2,3,3,4,5,5,6,6,6,6,7,7,7,7)],
+      values = alpha(colour = inferno8[c(2,3,4,4,5,5,5,5,6,6,6,6)],
                      
                                                           alpha =  0.75)) +
     labs(title = paste0(prjct_rad," - eDNA & Ovos e Larvas - Análise: ",Sys.Date()),
@@ -1132,7 +1109,7 @@ colnames(track_tbl)
       # ylab(label = "Etapas de processamento dos dados") +
       # ggtitle(label = "Ecomol 1st run",
               # subtitle = "Número de reads por por biblioteca e etapa do processamento") +
-      facet_wrap(~File_name,ncol = 10) +
+      facet_wrap(~File_name,ncol = ) +
     coord_fixed(ratio = 25000) +
       theme_bw(base_size = 8) +
     theme(axis.text.x = element_text(angle = 90,hjust = 0.0001,vjust = -0.00000000001,face = "bold")) +
@@ -1166,7 +1143,7 @@ track_tbl$`Full name` %>% unique()
 ```
 
 
-<!-- ![gráfico de reads](/home/heron/prjcts/fish_eDNA/analyses/LGC_run5_22dez21/results/figs/LGC_run5_22dez21track_samples.ng) -->
+<!-- ![gráfico de reads](/home/gabriel/projetos/peixes-eDNA//analyses/LGC_run5_22dez21/results/figs/LGC_run5_22dez21track_samples.ng) -->
 
 
 
@@ -1179,7 +1156,7 @@ On this step the ASVs identified by the **DADA2** pipeline, jointly for all libr
 #19 - classify taxonomy exactly ----
 
 mergers_sps <- dada2::assignSpecies(seqs = mergers_seqtab.nochim, allowMultiple = 10,
-                                refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
+                                refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
                                 tryRC=TRUE,
                                 n = 20000,
                                 verbose = TRUE)
@@ -1197,15 +1174,15 @@ View(mergers_sps)
 #R1/R2 separetly ----
 
 R1_sps <- dada2::assignSpecies(seqs = R1_seqtab,allowMultiple = 10,
-                         # refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/jul21/dada_tax_fullDB_order_SPs_jul21.fasta",
-                         refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
+                         # refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/jul21/dada_tax_fullDB_order_SPs_jul21.fasta",
+                         refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
                          tryRC=TRUE,
                          n = 20000,
                          verbose = TRUE)
 
 R2_sps <- dada2::assignSpecies(seqs = R2_seqtab,allowMultiple = 10,
-                         # refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/jul21/dada_tax_fullDB_order_SPs_jul21.fasta",
-                         refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
+                         # refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/jul21/dada_tax_fullDB_order_SPs_jul21.fasta",
+                         refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
                          tryRC=TRUE,
                          n = 20000,
                          verbose = TRUE)
@@ -1220,7 +1197,7 @@ R2_sps <- dada2::assignSpecies(seqs = R2_seqtab,allowMultiple = 10,
 ```{r, eval=FALSE}
 #20 - classify taxonomy ----
 mergers_taxa <- dada2::assignTaxonomy(seqs = mergers_seqtab.nochim,
-                                  refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
+                                  refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
                                   multithread=TRUE, tryRC=TRUE,taxLevels = c("Kingdom","Phylum","Class","Order","Family", "Genus", "Species","Specimen","Basin"),
                            outputBootstraps = TRUE, verbose = TRUE )
 
@@ -1232,16 +1209,16 @@ mergers_taxa <- dada2::assignTaxonomy(seqs = mergers_seqtab.nochim,
 
 
 R1_taxa <- dada2::assignTaxonomy(seqs = R1_seqtab,
-                           # refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/jul21/dada_tax_fullDB_order_jul21.fasta",
-                           refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
+                           # refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/jul21/dada_tax_fullDB_order_jul21.fasta",
+                           refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
                            multithread=TRUE, tryRC=TRUE,taxLevels = c("Kingdom","Phylum","Class","Order","Family", "Genus", "Species","Specimen","Basin"),
                            outputBootstraps = TRUE, verbose = TRUE )
 
 
 
 R2_taxa <- dada2::assignTaxonomy(seqs = R2_seqtab,
-                           # refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/jul21/dada_tax_fullDB_order_jul21.fasta",
-                           refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
+                           # refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/jul21/dada_tax_fullDB_order_jul21.fasta",
+                           refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
                            multithread=TRUE, tryRC=TRUE,taxLevels = c("Kingdom","Phylum","Class","Order","Family", "Genus", "Species","Specimen","Basin"),
                            outputBootstraps = TRUE, verbose = TRUE )
 
@@ -1849,7 +1826,7 @@ all_asv_fasta_abd <- c(rbind(asvs_abd$`ASV header abd`, asvs_abd$`ASV (Sequence)
 write(all_asv_fasta_abd, paste0(results_path,"/",prjct_rad,"_abd.fasta"))
 
 #run on bash
-# heron@edna:~/prjcts/fish_eDNA/analyses/LGC_run5_22dez21/results/swarm$ swarm -t 50 ../LGC_run5_22dez21_abd.fasta -s LGC_run5_22dez21-swarm.stats -o LGC_run5_22dez21-swarm.out -w LGC_run5_22dez21-representative_OTUs.fasta -i LGC_run5_22dez21-swarm.structure -f
+# heron@edna:/home/gabriel/projetos/peixes-eDNA/analises/LGC_run5_22dez21/results/swarm$ swarm -t 50 ../LGC_run5_22dez21_abd.fasta -s LGC_run5_22dez21-swarm.stats -o LGC_run5_22dez21-swarm.out -w LGC_run5_22dez21-representative_OTUs.fasta -i LGC_run5_22dez21-swarm.structure -f
 
 
 swarm_clust <- list.files(path = swarm_path,
@@ -2512,7 +2489,7 @@ identified_ASVs <- identified_ASVs %>%
   
 #write fasta file with ASVs and Taxonomy
 
-dir.create("~/prjcts/fish_eDNA/analyses/LGC_run5_22dez21/results/ASVs",showWarnings = T)
+dir.create("/home/gabriel/projetos/peixes-eDNA/analises/LGC_run5_22dez21/results/ASVs",showWarnings = T)
 
 #NeoFish ----
 identified_ASVs %>% 
@@ -2522,7 +2499,7 @@ identified_ASVs %>%
 neoASVs_fasta <- c(rbind(identified_ASVs$final_header[identified_ASVs$Primer =="NeoFish"],
                          identified_ASVs$`ASV (Sequence)`[identified_ASVs$Primer =="NeoFish"]))
 
-write(neoASVs_fasta, "~/prjcts/fish_eDNA/analyses/LGC_run5_22dez21/results/ASVs/NeoFish_ASVs_IDed.fasta")
+write(neoASVs_fasta, "/home/gabriel/projetos/peixes-eDNA/analises/LGC_run5_22dez21/results/ASVs/NeoFish_ASVs_IDed.fasta")
 
 
 
@@ -2534,7 +2511,7 @@ identified_ASVs %>%
 mifASVs_fasta <- c(rbind(identified_ASVs$final_header[identified_ASVs$Primer =="MiFish"],
                          identified_ASVs$`ASV (Sequence)`[identified_ASVs$Primer =="MiFish"]))
 
-write(mifASVs_fasta, "~/prjcts/fish_eDNA/analyses/LGC_run5_22dez21/results/ASVs/MiFish_ASVs_IDed.fasta")
+write(mifASVs_fasta, "/home/gabriel/projetos/peixes-eDNA/analises/LGC_run5_22dez21/results/ASVs/MiFish_ASVs_IDed.fasta")
 
 
 
@@ -2548,8 +2525,8 @@ ASVs_fasta <- c(rbind(identified_ASVs$final_header,
                          identified_ASVs$`ASV (Sequence)`))
 
 
-write(ASVs_fasta, "~/prjcts/fish_eDNA/analyses/LGC_run5_22dez21/results/ASVs/LGC_run5-LIngleses_ASVs_IDed_noBac.fasta")
-write(ASVs_fasta, "~/prjcts/fish_eDNA/analyses/LGC_run5_22dez21/results/ASVs/LGC_run5-Irape_ASVs_IDed_noBac.fasta")
+write(ASVs_fasta, "/home/gabriel/projetos/peixes-eDNA/analises/LGC_run5_22dez21/results/ASVs/LGC_run5-LIngleses_ASVs_IDed_noBac.fasta")
+write(ASVs_fasta, "/home/gabriel/projetos/peixes-eDNA/analises/LGC_run5_22dez21/results/ASVs/LGC_run5-Irape_ASVs_IDed_noBac.fasta")
 
 
 
