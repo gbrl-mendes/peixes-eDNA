@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r load myData, include=FALSE}
-load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/env_li_23mar22.RData")
+load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/li_22mar22-env_2022-03-23_blast.RData")
 ```
 
 
@@ -1267,33 +1267,15 @@ samdf <- samdf %>% as.data.frame()
 ```{r, eval=FALSE}
 #23 - interpret dada on phyloseq ----
 
+#o Phyloseq é utilizado para reunir em um mesmo objeto os datasets otu_table, sample_data e tax_table. Ele gera um objeto (neste caso o mergers_ps) que é de dificil manipulacao, e por isso depois ele sera 'derretido' em um objeto mais manipulavel. Ele foi incluido no pipeline por ja ser usado associado com o dada2 
+
 mergers_ps <- phyloseq::phyloseq(phyloseq::otu_table(mergers_seqtab.nochim, taxa_are_rows = FALSE),
                                  phyloseq::sample_data(samdf),
                                  phyloseq::tax_table(mergers_taxa$tax))
-#
-
-
-
-
-plot_richness(mergers_ps, x="Point", measures=c("Shannon", "Simpson"), color="File_name")
-
 
 View(mergers_seqtab.nochim)
 View(samdf)
 View(mergers_taxa$tax)
-
-# 
-# R1_ps <- phyloseq::phyloseq(phyloseq::otu_table(R1_seqtab, taxa_are_rows = FALSE),
-#                             phyloseq::sample_data(samdf),
-#                             phyloseq::tax_table(R1_taxa$tax))
-# 
-# R2_ps <- phyloseq::phyloseq(phyloseq::otu_table(R2_seqtab, taxa_are_rows = FALSE),
-#                             phyloseq::sample_data(samdf),
-#                             phyloseq::tax_table(R2_taxa$tax))
-
-
-
-# rownames(mergers_seqtab.nochim)
 
 ```
 
@@ -1318,8 +1300,6 @@ Many different graphics can be generated, together or in isolation, for all prim
 #TODO terminar de implementar a analise de cada read separada
 #melt phyloseq object into tbl
 mergers_ps_tbl <- psmelt(mergers_ps) %>% as_tibble() %>% mutate(Read_origin = "merged") %>%  filter(Abundance >=1)
-# R1_ps_tbl <- phyloseq::psmelt(R1_ps) %>% as_tibble() %>% mutate(Read_origin = "R1") %>%  filter(Abundance >=1)
-# R2_ps_tbl <- phyloseq::psmelt(R2_ps) %>% as_tibble() %>% mutate(Read_origin = "R2") %>%  filter(Abundance >=1)
 
 
         mergers_ps_tbl$OTU %>% unique() %>% length()
