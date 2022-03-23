@@ -1,6 +1,6 @@
 ---
 title: "Lagoa dos Ingleses eDNA - Sequenciamentos 2, 4 e 5"
-author: "Hilário, OH"
+author: "Hilário, OH; Mendes, GA"
 date: "22/03/2022"
 output:
   html_document:
@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r load myData, include=FALSE}
-load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/env_li_22mar22_17h44.RData")
+load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/env_li_23mar22.RData")
 ```
 
 
@@ -408,6 +408,7 @@ reads_fnRs_paired[69]
 
 
 #repairing demultiplexed reads ----
+#remocao das reads não-pareadas
 
 for (lib in 1:length(reads_fnFs)) {
 
@@ -432,7 +433,7 @@ for (lib in 1:length(reads_fnFs)) {
 # Raw data cleaning on DADA2
 ## Seting sample levels
 
-To avoid merging reads that did no come from the same cluster, we must check read pairing and remove unpaired (mandatory on DADA2).
+Definindo a ordem em que as amostras irão aparecer nos gráficos.
 
 ```{r, eval=FALSE,echo=TRUE}
 
@@ -653,13 +654,13 @@ REV_dadaRs_seqtab <- makeSequenceTable(samples = LGC_run_REV_dadaRs)
 
 # colnames(REV_dadaRs_seqtab) <- dada2:::rc(colnames(REV_dadaRs_seqtab))
 
-R1_seqtab <- sumSequenceTables(table1 = FWD_dadaFs_seqtab,
-                               table2 = REV_dadaFs_seqtab)
-R2_seqtab <- sumSequenceTables(table1 = FWD_dadaRs_seqtab,
-                               table2 = REV_dadaRs_seqtab)
-
-dim(R1_seqtab)
-dim(R2_seqtab)
+# R1_seqtab <- sumSequenceTables(table1 = FWD_dadaFs_seqtab,
+#                                table2 = REV_dadaFs_seqtab)
+# R2_seqtab <- sumSequenceTables(table1 = FWD_dadaRs_seqtab,
+#                                table2 = REV_dadaRs_seqtab)
+              # 
+              # dim(R1_seqtab)
+              # dim(R2_seqtab)
 # FWD & REV oriented mergers
 
 
@@ -678,33 +679,9 @@ length(R2_seqtab)
 length(mergers_seqtab)
 
 
-
-# Unify merged amplicons ----
-
-# reverse complement the REV merged amplicon
-
-#OBS: as we are working with mixed orientations amplicons, we must reverse the reverse-demultiplexes reads.
-#movi pra 30 linhas atras
-# colnames(run_seqtab_REV) <- dada2:::rc(colnames(run_seqtab_REV)) # reverse-complement
-
-
-    #nao precisa pois ja inverti antes de azer a tabela la atras
-# colnames(R2_seqtab) <- dada2:::rc(colnames(R2_seqtab)) # reverse-complement
-
-  # seqtab <- mergeSequenceTables(table1 = run_seqtab_FWD, table2 = run_seqtab_REV) # the usual with single orientation
-
-
-
-
-length(mergers_seqtab)
-
-                # R1_R2_seqtab <- sumSequenceTables(table1 = R1_seqtab, table2 = R2_seqtab)
-                # all_seqtab <- sumSequenceTables(table1 = R1_R2_seqtab, table2 = mergers_seqtab)
-
-
 dim(run_seqtab_REV)
 dim(run_seqtab_FWD)
-dim(R1_R2_seqtab)
+#dim(R1_R2_seqtab)
 dim(all_seqtab)
 dim(mergers_seqtab)
 # View(seqtab)
@@ -738,19 +715,6 @@ table(nchar(getSequences(mergers_seqtab))) %>% plot()
 ```{r, eval=FALSE}
 # 16 - remove chimeras ----
 
-# all_seqtab.nochim <- removeBimeraDenovo(all_seqtab, method="consensus", multithread=TRUE, verbose=TRUE)  #minFoldParentOverAbundance??
-# dim(all_seqtab.nochim)
-# sum(all_seqtab.nochim)/sum(all_seqtab) # =  0.9567811 , perda de 4.4% na abundancia -> estes 4.4% são quimeras
-# #count proportion of ASVs of a given length
-# table(nchar(getSequences(all_seqtab.nochim)))
-# table(nchar(getSequences(all_seqtab.nochim))) %>% plot()
-# rownames(all_seqtab.nochim)
-# rownames(all_seqtab)
-# 
-
-
-
-
 mergers_seqtab.nochim <- removeBimeraDenovo(mergers_seqtab, method="consensus", multithread=TRUE, verbose=TRUE)  #minFoldParentOverAbundance??
 dim(mergers_seqtab.nochim)
 sum(mergers_seqtab.nochim)/sum(mergers_seqtab) # =  0.9567811 , perda de 4.4% na abundancia -> estes 4.4% são quimeras
@@ -759,31 +723,6 @@ table(nchar(getSequences(mergers_seqtab.nochim)))
 table(nchar(getSequences(mergers_seqtab.nochim))) %>% plot()
 rownames(mergers_seqtab.nochim)
 rownames(mergers_seqtab)
-
-# 
-# #I still do not understand how is possible to have bimeras on single reads ASVs
-# 
-# R1_seqtab.nochim <- removeBimeraDenovo(R1_seqtab, method="consensus", multithread=TRUE, verbose=TRUE)  #minFoldParentOverAbundance??
-# dim(R1_seqtab.nochim)
-# sum(R1_seqtab.nochim)/sum(R1_seqtab) # =  0.9567811 , perda de 4.4% na abundancia -> estes 4.4% são quimeras
-# #count proportion of ASVs of a given length
-# table(nchar(getSequences(R1_seqtab.nochim)))
-# table(nchar(getSequences(R1_seqtab.nochim))) %>% plot()
-# rownames(R1_seqtab.nochim)
-# rownames(R1_seqtab)
-# 
-# R2_seqtab.nochim <- removeBimeraDenovo(R2_seqtab, method="consensus", multithread=TRUE, verbose=TRUE)  #minFoldParentOverAbundance??
-# dim(R2_seqtab.nochim)
-# sum(R2_seqtab.nochim)/sum(R2_seqtab) # =  0.9567811 , perda de 4.4% na abundancia -> estes 4.4% são quimeras
-# #count proportion of ASVs of a given length
-# table(nchar(getSequences(R2_seqtab.nochim)))
-# table(nchar(getSequences(R2_seqtab.nochim))) %>% plot()
-# rownames(R2_seqtab.nochim)
-# rownames(R2_seqtab)
-
-
-# View(seqtab.nochim)
-str(seqtab.nochim)
 
 ```
 
@@ -1079,8 +1018,7 @@ colnames(track_tbl)
                                           "Merged FWD", "Merged REV", 
                                           "Denoised REV_R2", "Denoised REV_R1",
                                           "Denoised FWD_R2", "Denoised FWD_R1",
-                                          "Raw FWD_R2","Raw FWD_R1", 
-                                          "Raw REV_R2","Raw REV_R1"))) 
+                                          "Raw REV_R2","Raw REV_R1", "Raw FWD_R2","Raw FWD_R1"))) 
 
     options(scipen = 22)
   
@@ -1156,7 +1094,7 @@ On this step the ASVs identified by the **DADA2** pipeline, jointly for all libr
 #19 - classify taxonomy exactly ----
 
 mergers_sps <- dada2::assignSpecies(seqs = mergers_seqtab.nochim, allowMultiple = 10,
-                                refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
+                                refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
                                 tryRC=TRUE,
                                 n = 20000,
                                 verbose = TRUE)
@@ -1171,24 +1109,24 @@ mergers_sps <- dada2::assignSpecies(seqs = mergers_seqtab.nochim, allowMultiple 
 View(mergers_sps)
 
 
-#R1/R2 separetly ----
-
-R1_sps <- dada2::assignSpecies(seqs = R1_seqtab,allowMultiple = 10,
-                         # refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/jul21/dada_tax_fullDB_order_SPs_jul21.fasta",
-                         refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
-                         tryRC=TRUE,
-                         n = 20000,
-                         verbose = TRUE)
-
-R2_sps <- dada2::assignSpecies(seqs = R2_seqtab,allowMultiple = 10,
-                         # refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/jul21/dada_tax_fullDB_order_SPs_jul21.fasta",
-                         refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
-                         tryRC=TRUE,
-                         n = 20000,
-                         verbose = TRUE)
-
-
-
+# #R1/R2 separetly ----
+# 
+# R1_sps <- dada2::assignSpecies(seqs = R1_seqtab,allowMultiple = 10,
+#                          # refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/jul21/dada_tax_fullDB_order_SPs_jul21.fasta",
+#                          refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
+#                          tryRC=TRUE,
+#                          n = 20000,
+#                          verbose = TRUE)
+# 
+# R2_sps <- dada2::assignSpecies(seqs = R2_seqtab,allowMultiple = 10,
+#                          # refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/jul21/dada_tax_fullDB_order_SPs_jul21.fasta",
+#                          refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
+#                          tryRC=TRUE,
+#                          n = 20000,
+#                          verbose = TRUE)
+# 
+# 
+# 
 
 
 
@@ -1197,7 +1135,7 @@ R2_sps <- dada2::assignSpecies(seqs = R2_seqtab,allowMultiple = 10,
 ```{r, eval=FALSE}
 #20 - classify taxonomy ----
 mergers_taxa <- dada2::assignTaxonomy(seqs = mergers_seqtab.nochim,
-                                  refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
+                                  refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
                                   multithread=TRUE, tryRC=TRUE,taxLevels = c("Kingdom","Phylum","Class","Order","Family", "Genus", "Species","Specimen","Basin"),
                            outputBootstraps = TRUE, verbose = TRUE )
 
@@ -1206,21 +1144,20 @@ mergers_taxa <- dada2::assignTaxonomy(seqs = mergers_seqtab.nochim,
 
 
 #R1/R2 separetly ----
-
-
-R1_taxa <- dada2::assignTaxonomy(seqs = R1_seqtab,
-                           # refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/jul21/dada_tax_fullDB_order_jul21.fasta",
-                           refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
-                           multithread=TRUE, tryRC=TRUE,taxLevels = c("Kingdom","Phylum","Class","Order","Family", "Genus", "Species","Specimen","Basin"),
-                           outputBootstraps = TRUE, verbose = TRUE )
-
-
-
-R2_taxa <- dada2::assignTaxonomy(seqs = R2_seqtab,
-                           # refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/jul21/dada_tax_fullDB_order_jul21.fasta",
-                           refFasta =  "/home/gabriel/projetos/peixes-eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
-                           multithread=TRUE, tryRC=TRUE,taxLevels = c("Kingdom","Phylum","Class","Order","Family", "Genus", "Species","Specimen","Basin"),
-                           outputBootstraps = TRUE, verbose = TRUE )
+# 
+# 
+# R1_taxa <- dada2::assignTaxonomy(seqs = R1_seqtab,
+#                            # refFasta =  "/home/heron/prjcts/fish_eDNA//data/refs/db/LGC/jul21/dada_tax_fullDB_order_jul21.fasta",
+#                            refFasta =  "/home/heron/prjcts/fish_eDNA//data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
+#                            multithread=TRUE, tryRC=TRUE,taxLevels = c("Kingdom","Phylum","Class","Order","Family", "Genus", "Species","Specimen","Basin"),
+#                            outputBootstraps = TRUE, verbose = TRUE )
+# 
+# 
+# 
+# R2_taxa <- dada2::assignTaxonomy(seqs = R2_seqtab,
+#                            refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fast",
+#                            multithread=TRUE, tryRC=TRUE,taxLevels = c("Kingdom","Phylum","Class","Order","Family", "Genus", "Species","Specimen","Basin"),
+#                            outputBootstraps = TRUE, verbose = TRUE )
 
 
 # View(mergers_sps)
@@ -1230,23 +1167,24 @@ R2_taxa <- dada2::assignTaxonomy(seqs = R2_seqtab,
 #
 #
 mergers_csv_sp <- mergers_sps %>% as_tibble() %>% mutate(OTU = rownames(mergers_sps))
-R1_csv_sp <- R1_sps %>% as_tibble() %>% mutate(OTU = rownames(R1_sps))
-R2_csv_sp <- R2_sps %>% as_tibble() %>% mutate(OTU = rownames(R2_sps))
+# R1_csv_sp <- R1_sps %>% as_tibble() %>% mutate(OTU = rownames(R1_sps))
+# R2_csv_sp <- R2_sps %>% as_tibble() %>% mutate(OTU = rownames(R2_sps))
 
 
 
-all_csv_sp <- bind_rows(mergers_csv_sp, R1_csv_sp, R2_csv_sp)
+# all_csv_sp <- bind_rows(mergers_csv_sp, R1_csv_sp, R2_csv_sp)
+all_csv_sp <- bind_rows(mergers_csv_sp)
 
 
 colnames(all_csv_sp) <- c("exact Genus", "exact Species", "ASV")
 
 
 mergers_csv_taxa <- mergers_taxa$tax %>% as_tibble() %>% mutate(ASV = rownames(mergers_taxa))
-R1_csv_taxa <- R1_taxa$tax %>% as_tibble() %>% mutate(OTU = rownames(R1_taxa$tax))
-R2_csv_taxa <- R2_taxa$tax %>% as_tibble() %>% mutate(OTU = rownames(R2_taxa$tax))
+# R1_csv_taxa <- R1_taxa$tax %>% as_tibble() %>% mutate(OTU = rownames(R1_taxa$tax))
+# R2_csv_taxa <- R2_taxa$tax %>% as_tibble() %>% mutate(OTU = rownames(R2_taxa$tax))
 
 
-
+View(mergers_csv_taxa)
 
 mergers_csv_taxa$Species %>%  unique()
 
@@ -1287,11 +1225,20 @@ unique(sample_idx_tbl)
 
 
 samdf <- primers_n_samples[,c(
-  "Run","Group","Expedition","Coleta","Sample Name","File_name","Type",
-  "Point","Sub-point","Depth","Num replicates","Obs",
-  "Primer","Tag pairs","Tag FWD","Tag REV",
-  "Control",
-  "Quantidade de ovos ou larvas"
+  "Run",
+"Coleta",
+"Sample Name",
+"File_name",
+"Type",
+"Point",
+"Filter",
+"Num replicates",
+"Obs",
+"Primer",
+# "Tag pairs",
+# "Tag FWD",
+# "Tag REV",
+"Control"
                               )] 
 # %>% 
 #   unite(col = `Full name`,c(`Sampling Name`,`Replicate`),remove = FALSE)
@@ -1323,15 +1270,26 @@ samdf <- samdf %>% as.data.frame()
 mergers_ps <- phyloseq::phyloseq(phyloseq::otu_table(mergers_seqtab.nochim, taxa_are_rows = FALSE),
                                  phyloseq::sample_data(samdf),
                                  phyloseq::tax_table(mergers_taxa$tax))
+#
 
 
-R1_ps <- phyloseq::phyloseq(phyloseq::otu_table(R1_seqtab, taxa_are_rows = FALSE),
-                            phyloseq::sample_data(samdf),
-                            phyloseq::tax_table(R1_taxa$tax))
 
-R2_ps <- phyloseq::phyloseq(phyloseq::otu_table(R2_seqtab, taxa_are_rows = FALSE),
-                            phyloseq::sample_data(samdf),
-                            phyloseq::tax_table(R2_taxa$tax))
+
+plot_richness(mergers_ps, x="Point", measures=c("Shannon", "Simpson"), color="File_name")
+
+
+View(mergers_seqtab.nochim)
+View(samdf)
+View(mergers_taxa$tax)
+
+# 
+# R1_ps <- phyloseq::phyloseq(phyloseq::otu_table(R1_seqtab, taxa_are_rows = FALSE),
+#                             phyloseq::sample_data(samdf),
+#                             phyloseq::tax_table(R1_taxa$tax))
+# 
+# R2_ps <- phyloseq::phyloseq(phyloseq::otu_table(R2_seqtab, taxa_are_rows = FALSE),
+#                             phyloseq::sample_data(samdf),
+#                             phyloseq::tax_table(R2_taxa$tax))
 
 
 
@@ -1360,8 +1318,8 @@ Many different graphics can be generated, together or in isolation, for all prim
 #TODO terminar de implementar a analise de cada read separada
 #melt phyloseq object into tbl
 mergers_ps_tbl <- psmelt(mergers_ps) %>% as_tibble() %>% mutate(Read_origin = "merged") %>%  filter(Abundance >=1)
-R1_ps_tbl <- phyloseq::psmelt(R1_ps) %>% as_tibble() %>% mutate(Read_origin = "R1") %>%  filter(Abundance >=1)
-R2_ps_tbl <- phyloseq::psmelt(R2_ps) %>% as_tibble() %>% mutate(Read_origin = "R2") %>%  filter(Abundance >=1)
+# R1_ps_tbl <- phyloseq::psmelt(R1_ps) %>% as_tibble() %>% mutate(Read_origin = "R1") %>%  filter(Abundance >=1)
+# R2_ps_tbl <- phyloseq::psmelt(R2_ps) %>% as_tibble() %>% mutate(Read_origin = "R2") %>%  filter(Abundance >=1)
 
 
         mergers_ps_tbl$OTU %>% unique() %>% length()
@@ -1374,7 +1332,8 @@ R2_ps_tbl <- phyloseq::psmelt(R2_ps) %>% as_tibble() %>% mutate(Read_origin = "R
 
 
 #combine ps tables from all ASVs inputs
-all_ps_tbl <- bind_rows(R1_ps_tbl, R2_ps_tbl,mergers_ps_tbl)
+# all_ps_tbl <- bind_rows(R1_ps_tbl, R2_ps_tbl,mergers_ps_tbl)
+all_ps_tbl <- bind_rows(mergers_ps_tbl)
 # %>% unique()
 
 
@@ -1382,8 +1341,8 @@ all_ps_tbl$OTU %>% unique() %>% length()
 
 
 #remove ASVs with abundance = 0
-all_ps_tbl <- all_ps_tbl %>%
-  filter(`Abundance` > 0)
+# all_ps_tbl <- all_ps_tbl %>%
+#   filter(`Abundance` > 0)
 
 
 
@@ -1521,9 +1480,7 @@ cores_to_be_used <- future::availableCores() - 2 # Usar todos os cores -2 = 78
 cores_to_be_used
 
 future::plan(future::multisession(workers = cores_to_be_used))
-# future::availableWorkers()
 
-# blast_res2 <- furrr::future_map_dfr(asvs_blast[8446:8447], get_blastn_results, num_thread = 1, .options = furrr::furrr_options(seed = NULL))
 
 blast_res <- furrr::future_map_dfr(asvs_blast, get_blastn_results, num_thread = 1, .options = furrr::furrr_options(seed = NULL))
 
@@ -1532,7 +1489,7 @@ blast_res <- furrr::future_map_dfr(asvs_blast, get_blastn_results, num_thread = 
 readr::write_csv(blast_res, paste0(results_path,"asv_blastn_res_3hits_",Sys.Date(),".csv"),append = FALSE)
 
 
-base::save.image(paste0(analysis_path,"/",prjct_rad,"-env_",Sys.Date(),"_blast_Bdone2.RData"))
+base::save.image(paste0(analysis_path,"/",prjct_rad,"-env_",Sys.Date(),"_blast.RData"))
 
 # blast_res_bckp <- blast_res
 # blast_res <- blast_res_bckp
