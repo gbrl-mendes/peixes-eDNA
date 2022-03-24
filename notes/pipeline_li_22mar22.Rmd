@@ -30,7 +30,6 @@ load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/li_22mar22-e
 &nbsp;Este _pipeline_ foi desenvolvido pelo Dr. Heron Hilário e comentado e adaptado por Gabriel Antônio Mendes.Ele foi desenvolvido sob orientação do Professor Dr. Daniel de Cardoso Carvalho no Laboratório de Genética da Conservação da Pontífice Universidade Católica de Minas Gerais, Brasil (LGC PUC-MG).
 
 
-
 # Preparation
 
 ## Load _R libs_ and system programs.
