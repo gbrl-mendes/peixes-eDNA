@@ -1,9 +1,9 @@
 ---
-title: "Lagoa dos Ingleses eDNA - Sequenciamentos 2, 4 e 5"
+title: "eDNA-LGC metagenomics pipeline"
 author: "Hilário, OH; Mendes, GA"
 date: "22/03/2022"
 output:
-  html_document:
+  html_document:  
     code_download: yes
     theme: flatly
     toc: true
@@ -23,6 +23,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r load myData, include=FALSE}
 load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/li_22mar22-env_2022-03-23_blast.RData")
 ```
+
+# Introdução
+
+
+&nbsp;Este _pipeline_ foi desenvolvido pelo Dr. Heron Hilário e comentado e adaptado por Gabriel Antônio Mendes.Ele foi desenvolvido sob orientação do Professor Dr. Daniel de Cardoso Carvalho no Laboratório de Genética da Conservação da Pontífice Universidade Católica de Minas Gerais, Brasil (LGC PUC-MG).
+
 
 
 # Preparation
@@ -156,8 +162,7 @@ kit used (Collibri - Thermo) results in sequenced amplicons in both orientations
 we will consider the REV and FWD primers to be present in any of the reads. 
 In order for the next steps to perform propperly, user must supply a csv file 
 corresponding to a table of all samples' metada. This table must obligatory have 
-three columns, _File_name_, _Tag FWD_, and _Tag REV_. Each _Sample_ must correspond 
-to a unique value on the  _File_name_, and on the combination of _Tag FWD_ and _Tag REV_.
+three columns, _File_name_, _Tag FWD_, and _Tag REV_. Each _Sample_ must correspond to a unique value on the  _File_name_, and on the combination of _Tag FWD_ and _Tag REV_.
 
 
 
