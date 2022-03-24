@@ -2945,7 +2945,7 @@ ggsave(file = paste0(figs_path,"/ichthyo_",prjct_rad,"_ASV_Sps_by_sample_BLAST.p
 
 ## ASV size plots
 
-```{r,echo=TRUE, eval=TRUE}
+```{r,echo=TRUE, eval=FALSE}
 
 ASV_legth_by_Sample |> 
   plotly::ggplotly()
