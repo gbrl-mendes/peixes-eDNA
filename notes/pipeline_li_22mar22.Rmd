@@ -1,5 +1,5 @@
 ---
-title: "eDNA-LGC metagenomics pipeline"
+title: "eDNA-LGC Metagenomics Pipeline"
 author: "Hilário, OH; Mendes, GA"
 date: "22/03/2022"
 output:
@@ -27,7 +27,15 @@ load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/li_22mar22-e
 # Introdução
 
 
-&nbsp;Este _pipeline_ foi desenvolvido pelo Dr. Heron Hilário e comentado e adaptado por Gabriel Antônio Mendes.Ele foi desenvolvido sob orientação do Professor Dr. Daniel de Cardoso Carvalho no Laboratório de Genética da Conservação da Pontífice Universidade Católica de Minas Gerais, Brasil (LGC PUC-MG).
+&nbsp;Este _pipeline_ foi desenvolvido pelo Dr. Heron Hilário e comentado e adaptado por Gabriel Antônio Mendes.Seu desenvolvimento ocorreu sob orientação do Professor Dr. Daniel de Cardoso Carvalho no Laboratório de Genética da Conservação da Pontífice Universidade Católica de Minas Gerais, Brasil (LGC PUC-MG).
+
+Este código possui como objetivo principal realizar a identificação taxonômica de amplicons gerados a partir do material genético extraído de amostras ambientais, como água ou solo. Ele foi desenvolvido tendo em seu núcleo o uso do pacote dada2, que utiliza do algorítmo DADA2 para inferir as sequências exatas das variantes de amplicons (ASVs), a partir de dados HTS _(High Throughput Sequencig)_ gerados por sequenciamentos Illumina.
+
+Para a realização da inferência taxonômica das ASVs utilizamos de referência um banco de dados próprio, o db12SLGC, onde estão depositadas as sequências do gene rRNA mitocondrial 12S das espécies de peixes das bacias dos Rio Jequitinhonha e São Francisco. O DADA2 pode não ser suficiente para realizar a atribuição taxonômica de todos os amplicons gerados, e por isso também foi implementado no _pipeline_ a identificação a partir do BLAST, realizada simultaneamente.
+
+Atualmente, sabe-se que uma abordagem que utilize apenas a inferência da sequência exata das ASVs não é suficiente para realizar a identificação adequada. Por isso, o _eDNA-LGC Metagenomics Pipeline_ utiliza também o SWARM para a realização da inferência de OTUs.
+
+Se você tem alguma dúvida ou sugestão, por favor sinta-se à vontade para escrever um e-mail para lgc.edna@gmail.com
 
 
 # Preparation
