@@ -12,13 +12,15 @@ output:
   pdf_document: default
 editor_options:
   chunk_output_type: console
+  markdown: 
+    wrap: 72
 ---
 
-***
+------------------------------------------------------------------------
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
 
 ```{r load myData, include=FALSE}
 load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/li_22mar22-env_2022-03-23_blast.RData")
@@ -26,30 +28,46 @@ load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/li_22mar22-e
 
 # Introdução
 
+Este *pipeline* foi desenvolvido pelo Dr. Heron Hilário e comentado e
+adaptado por Gabriel Antônio Mendes. Seu desenvolvimento ocorreu sob
+orientação do Professor Dr. Daniel de Cardoso Carvalho no Laboratório de
+Genética da Conservação da Pontífice Universidade Católica de Minas
+Gerais, Brasil (LGC PUC-MG).
 
-&nbsp;Este _pipeline_ foi desenvolvido pelo Dr. Heron Hilário e comentado e adaptado por Gabriel Antônio Mendes.Seu desenvolvimento ocorreu sob orientação do Professor Dr. Daniel de Cardoso Carvalho no Laboratório de Genética da Conservação da Pontífice Universidade Católica de Minas Gerais, Brasil (LGC PUC-MG).
+Este código possui como objetivo principal realizar a identificação
+taxonômica de amplicons gerados a partir do material genético extraído
+de amostras ambientais, como água ou solo. Ele foi desenvolvido tendo em
+seu núcleo o uso do pacote dada2, que utiliza do algorítmo DADA2 para
+inferir as sequências exatas das variantes de amplicons (ASVs), a partir
+de dados HTS *(High Throughput Sequencig)* gerados por sequenciamentos
+Illumina.
 
-Este código possui como objetivo principal realizar a identificação taxonômica de amplicons gerados a partir do material genético extraído de amostras ambientais, como água ou solo. Ele foi desenvolvido tendo em seu núcleo o uso do pacote dada2, que utiliza do algorítmo DADA2 para inferir as sequências exatas das variantes de amplicons (ASVs), a partir de dados HTS _(High Throughput Sequencig)_ gerados por sequenciamentos Illumina.
+Para a realização da inferência taxonômica das ASVs utilizamos de
+referência um banco de dados próprio, o db12SLGC, onde estão depositadas
+as sequências do gene rRNA mitocondrial 12S das espécies de peixes das
+bacias dos Rio Jequitinhonha e São Francisco. O DADA2 pode não ser
+suficiente para realizar a atribuição taxonômica de todos os amplicons
+gerados, e por isso também foi implementado no *pipeline* a
+identificação a partir do BLAST, realizada simultaneamente.
 
-Para a realização da inferência taxonômica das ASVs utilizamos de referência um banco de dados próprio, o db12SLGC, onde estão depositadas as sequências do gene rRNA mitocondrial 12S das espécies de peixes das bacias dos Rio Jequitinhonha e São Francisco. O DADA2 pode não ser suficiente para realizar a atribuição taxonômica de todos os amplicons gerados, e por isso também foi implementado no _pipeline_ a identificação a partir do BLAST, realizada simultaneamente.
+Atualmente, sabe-se que uma abordagem que utilize apenas a inferência da
+sequência exata das ASVs não é suficiente para realizar a identificação
+adequada. Por isso, o *eDNA-LGC Metagenomics Pipeline* utiliza também o
+SWARM para a realização da inferência de OTUs.
 
-Atualmente, sabe-se que uma abordagem que utilize apenas a inferência da sequência exata das ASVs não é suficiente para realizar a identificação adequada. Por isso, o _eDNA-LGC Metagenomics Pipeline_ utiliza também o SWARM para a realização da inferência de OTUs.
+Se você tem alguma dúvida ou sugestão, por favor sinta-se à vontade para
+escrever um e-mail para
+[lgc.edna\@gmail.com](mailto:lgc.edna@gmail.com){.email}
 
-Se você tem alguma dúvida ou sugestão, por favor sinta-se à vontade para escrever um e-mail para lgc.edna@gmail.com
+# Preparação
 
-teste
-
-
-# Preparation
-
-## Load _R libs_ and system programs.
+## Load *R libs* and system programs.
 
 ```{r, eval=FALSE,echo=TRUE}
 
-#load project env and Rmd necessary libs
+#carregando o arquivo de environment do projeto e Rmd e os pacotes necessarios
 
-
-# 0 - load libraries ----
+# 0 - Carregando pacotes ----
 {
   library(dplyr)
   library(tidyr)
@@ -64,88 +82,70 @@ teste
   library(future)
 }
 
-#set complete path to cutadapt executable
+#definindo o caminho para o executavel do cutadapt
 
 cutadapt <- "/usr/local/bin/cutadapt"
 
-#set important project's folders path
-# 1 - set outputs and inputs path ----
 
-# use the same path you created on the bash $PRJCT_DIR variable
+#definindo o caminho das pastas essenciais para o projeto
+
+# 1 - Definindo o caminhos de saida e de entrada ----
+
+# usar o mesmo caminho que foi criado na variavel do bash $PRJCT_DIR
 analysis_path <- "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22"
 
-# create data_folder
+# criacao do data_folder
 data_path <- paste0(analysis_path,"/data")
 if(!dir.exists(data_path)) dir.create(data_path)
 
-# create processed reads folder
+# criacao do diretorio das reads processadas
 pipe_libs <- paste0(data_path,"/reads")
 if(!dir.exists(pipe_libs)) dir.create(pipe_libs)
 
-# create results folder
+# criacao da pasta de resultados
 results_path <- paste0(analysis_path,"/results")
 if(!dir.exists(results_path)) dir.create(results_path)
 
-# create figs folder
+# criacao da pasta de figuras
 figs_path <- paste0(results_path,"/figs")
 if(!dir.exists(figs_path)) dir.create(figs_path)
 
-# create swarm folder
+# criacao da pasta do swarm
 swarm_path <- paste0(results_path,"/swarm")
 if(!dir.exists(swarm_path)) dir.create(swarm_path)
 
-#project name radical
+#criacao do radical do nome do projeto
 prjct_rad <-c("li_22mar22")
 
 list.files(analysis_path)
 
-# 2 - indicate where the raw reads are ----
+# 2 - Indicar onde as reads brutas estao ----
 run_path <- "/home/gabriel/projetos/peixes-eDNA/raw"
 
 
 
-## All libs are already demultiplexed
+## Todas as bibliotecas ja estao demultiplexadas
 raw_libs <- "/home/gabriel/projetos/peixes-eDNA/raw" # PATH to the directory containing raw fastq files (same as in $RAW_DATA).
 
-#check if these are really the data
+#funcao para conferir se o diretorio salvo em raw_libs realmente contem os arquivos que voce quer analisar
 list.files(path = raw_libs)
 
 
 ```
 
-```{r, eval=FALSE}
-# Script dispensável para gerar a tabela com as amostras. A tabela final está em peixes-eDNA/analises/li_22mar22/data/LI_primers_n_samples.csv
+# Obtenção dos dados
 
-# tbl_amostras <- read.csv(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/data/run_2_4_5_lagoa_ingleses_v2.csv")
-# 
-# 
-# tbl_amostras %>% colnames()
-# tbl_amostras %>% colnames() %>% paste0(collapse = '",\n"') %>% cat()
-# 
-# 
-# tbl_amostras %>%
-#   select(c("Sample", "Run","Group", "Expedition","Coleta", "Year","Sample.Name", "File_name",
-# "Type", "Point", "Sub.point", "Depth","Num.replicates", "Primer")) %>% 
-#   unique() %>% writexl::write_xlsx(
-#                     path = paste0("/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/data/tbl_amostras_li_22mar22",".xlsx"),
-#                     col_names = TRUE,format_headers = TRUE)
-# 
-
-```
-
-
-# Data acquisiton
-
-Download demultiplexed samples from _Base Space_ using the _bs_ interface.
+Download das amostras demultiplexadas do *Illumina BaseSpace Sequence
+Hub* utilizando a interface *bs*.
 
 ```{bash, eval=FALSE}
-#navigate to raw-data folder
+#navegando ate a pasta com os arquivos brutos
 cd $raw_data_folder/$run_folder;
 
-#authenticate to BaseSpace (only at first log in)
+#realizando a autenticacao no BaseSpace Sequence Hub (apenas no primeiro log in)
 bs auth;
 
-#list datasets from runs on your BaseSpace
+#exibindo os sequenciamentos das corridas no seu repositório BaseSpace
 bs list datasets;
 
 
@@ -160,42 +160,29 @@ mkdir $RAW_DATA;
 mv /home/heron/runs/run5_22dez21/fastq/*/*fastq.gz $RAW_DATA; 
 ```
 
+# Demultiplexando as amostras
 
+ Cada biblioteca possui amostras que estão combinadas sob um mesmo índex Illumina. Agora iremos utilizar as sequências dos primers indexados para selecionais quais reads correspondem a cada amostra única. Já que o kit de preparação de bibliotecas utilizado (Collibri -ThermoFisher) resulta em amplicons sequenciados em ambas orientações, iremos partir do princípio que é possível encontrar os primers FWD e REV em qualquer conjunto de reads. Para que as próximas etapas ocorram adequadamente, deveremos fornecer um arquivo .csv correspondente aos metadados associados a todas amostras.
+ Esta tabela deve obrigatoriamente conter três colunas, *File_name*, *Tag FWD*, *Tag REV*. Cada *amostra* deve corresponder a um valor único em *File_name* e a uma combinação única de *Tag FWD* e *Tag REV*.
 
-# Demultiplexing samples
-
-
-&nbsp;Libraries are combined on a single Illumina index, now we must use indexed-primers 
-sequences to select which ones correspond to each unique sample. As the library prep 
-kit used (Collibri - Thermo) results in sequenced amplicons in both orientations, 
-we will consider the REV and FWD primers to be present in any of the reads. 
-In order for the next steps to perform propperly, user must supply a csv file 
-corresponding to a table of all samples' metada. This table must obligatory have 
-three columns, _File_name_, _Tag FWD_, and _Tag REV_. Each _Sample_ must correspond to a unique value on the  _File_name_, and on the combination of _Tag FWD_ and _Tag REV_.
-
-
-
-
-
-
-## Regenerate index+primer 
+## Regenerate index+primer
 
 ```{r, eval=FALSE,echo=TRUE}
-# load primers indexes and samples table
+# carregar os indexes dos primers e a tabela de amostras 
 
-## This is the most impotant input on the anlaysis
-### Required columns with unique values: File_name, (combined) "Tag FWD-Tag REV"
+## Esta é a entrada mais importante da analise 
+### Este input e o arquivo .sv com colunas com valores unicos: File_name, (combined) "Tag FWD-Tag REV"
 
 primers_n_samples <- readr::read_csv(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/data/LI_primers_n_samples.csv")
 
 
-# chech if is there any duplicated file name ----
+# check if is there any duplicated file name ----
 primers_n_samples$File_name %>% length()
 primers_n_samples$File_name %>% unique() %>% length()
 primers_n_samples$File_name %>% duplicated() %>% which()
 primers_n_samples$File_name[primers_n_samples$File_name %>% duplicated()]
 
-# chech if is there any duplicated tag pair ----
+# check if is there any duplicated tag pair ----
 select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% nrow()
 select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% unique() %>% nrow()
 select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% duplicated() %>% which()
@@ -248,12 +235,9 @@ primers_seqs <- primers_seqs %>%
 
 ```
 
-
-
 ## Demultiplexing with cutadapt
 
-
-https://cutadapt.readthedocs.io/en/stable/guide.html#combinatorial-demultiplexing
+<https://cutadapt.readthedocs.io/en/stable/guide.html#combinatorial-demultiplexing>
 
 ```{bash, eval=FALSE}
 #na edna com
@@ -286,7 +270,8 @@ find ~/runs/run_28out21/dmux_CDI$ \
 
 ## Repairing
 
-To avoid merging reads that did no come from the same cluster, we must check read pairing and remove unpaired (mandatory on DADA2).
+To avoid merging reads that did no come from the same cluster, we must
+check read pairing and remove unpaired (mandatory on DADA2).
 
 ```{r, eval=FALSE,echo=TRUE}
 
@@ -445,6 +430,7 @@ for (lib in 1:length(reads_fnFs)) {
 ```
 
 # Raw data cleaning on DADA2
+
 ## Seting sample levels
 
 Definindo a ordem em que as amostras irão aparecer nos gráficos.
@@ -475,7 +461,9 @@ sample_levels <- c(
 
 ## Working with clean reads
 
-Now that reads are clean and repaired, we can start DADA2 pipeline. The first step is to learn read-specific error rates that will guide dereplication.
+Now that reads are clean and repaired, we can start DADA2 pipeline. The
+first step is to learn read-specific error rates that will guide
+dereplication.
 
 ```{r, echo=TRUE, eval=FALSE}
 
@@ -514,7 +502,8 @@ run_errR <- learnErrors(c(sample_idx_tbl$FWD_R2_paired[file.exists(sample_idx_tb
 
 ### Dereplication: grouping into ASVs
 
-On this step each library is reduced to its unique composing sequences and their counts.
+On this step each library is reduced to its unique composing sequences
+and their counts.
 
 ```{r, eval=FALSE}
 # 14 - dada dereplication ----
@@ -548,7 +537,8 @@ On this step each library is reduced to its unique composing sequences and their
 
 ### Merging single reads into ASVs
 
-On this step each library is reduced to its unique composing sequences and their counts.
+On this step each library is reduced to its unique composing sequences
+and their counts.
 
 ```{r, eval=FALSE}
 
@@ -588,9 +578,9 @@ length(run_mergers_REV)
 
 # Seqtab
 
-Now, since we have more than one read file pair with the same sample name, we will use a customized dada2 function (https://github.com/benjjneb/dada2/issues/132).
-
-
+Now, since we have more than one read file pair with the same sample
+name, we will use a customized dada2 function
+(<https://github.com/benjjneb/dada2/issues/132>).
 
 ```{r, echo=TRUE, eval=FALSE}
 sumSequenceTables <- function(table1, table2, ..., orderBy = "abundance") {
@@ -715,8 +705,6 @@ table(nchar(getSequences(mergers_seqtab))) %>% plot()
 
 ```
 
-
-
 ```{r, eval=FALSE}
 #TODO
 #generate automatic plots for seqtabs
@@ -724,7 +712,6 @@ table(nchar(getSequences(mergers_seqtab))) %>% plot()
 ```
 
 <br>
-
 
 ```{r, eval=FALSE}
 # 16 - remove chimeras ----
@@ -1094,14 +1081,20 @@ track_tbl$`Full name` %>% unique()
 
 ```
 
-
 <!-- ![gráfico de reads](/home/gabriel/projetos/peixes-eDNA//analyses/LGC_run5_22dez21/results/figs/LGC_run5_22dez21track_samples.ng) -->
-
-
 
 ### Classify taxonomy
 
-On this step the ASVs identified by the **DADA2** pipeline, jointly for all libraries of each primer, are associated (or not) to any of the sequences on the Reference 12S Sequences Database. DADA2 has two strategies to identify taxa. The first, _assignSpecies_, identify perfect matches of the ASVs in the Reference Database. The second, _assignTaxonomy_, use a RDP Naive Bayesian Classifier algorithm (Wang, 2007) with kmer size 8 and 100 bootstrap replicates to associate ASVs to the Reference Database Sequences. In the latter, the taxonomy ranks classification is proportional to the sequence similarity, although this relation is not yet clear to us.
+On this step the ASVs identified by the **DADA2** pipeline, jointly for
+all libraries of each primer, are associated (or not) to any of the
+sequences on the Reference 12S Sequences Database. DADA2 has two
+strategies to identify taxa. The first, *assignSpecies*, identify
+perfect matches of the ASVs in the Reference Database. The second,
+*assignTaxonomy*, use a RDP Naive Bayesian Classifier algorithm (Wang,
+2007) with kmer size 8 and 100 bootstrap replicates to associate ASVs to
+the Reference Database Sequences. In the latter, the taxonomy ranks
+classification is proportional to the sequence similarity, although this
+relation is not yet clear to us.
 
 ```{r, eval=FALSE}
 
@@ -1215,19 +1208,21 @@ mergers_csv_taxa$Species %>%  unique()
 
 <br><br>
 
-  Here the **DADA2** pipeline ends.
+Here the **DADA2** pipeline ends.
 
 <br><br><br><br>
 
-  ## Phyloseq
+\#\# Phyloseq
 
-  On this step the ASVs associated to taxonomic ranks by **DADA2** and their respective counts by library, are combined using the **Phyloseq** package.
+On this step the ASVs associated to taxonomic ranks by **DADA2** and
+their respective counts by library, are combined using the **Phyloseq**
+package.
 
 <br>
 
-  ### Generate sample metadata table
+\#\#\# Generate sample metadata table
 
-  Here the experiment metadata is associated to each sample.
+Here the experiment metadata is associated to each sample.
 
 ```{r, eval=FALSE}
 # 22 - create sample table ----
@@ -1272,7 +1267,7 @@ samdf <- samdf %>% as.data.frame()
 
 <br>
 
-  This sample metadata table must be customized for each experiment.
+This sample metadata table must be customized for each experiment.
 
 <br>
 
@@ -1293,12 +1288,12 @@ View(mergers_taxa$tax)
 
 ```
 
-
 <br>
 
 ### Merge and Flex Phyloseq results
 
-Many different graphics can be generated, together or in isolation, for all primers/libraries and taxonomic ranks.
+Many different graphics can be generated, together or in isolation, for
+all primers/libraries and taxonomic ranks.
 
 ```{r, eval=FALSE}
 #24 - merge ps analisys ----
@@ -1608,11 +1603,7 @@ colnames(all_ps_tbl_blast)
 
 ```
 
-
-
-
-#calculate sample abundances ----
-
+\#calculate sample abundances ----
 
 ```{r, eval=FALSE, echo=TRUE}
 
@@ -1689,11 +1680,6 @@ names(all_ps_tbl_blast)[which(names(all_ps_tbl_blast)== "ASV length")] <- "ASV S
 
 ```
 
-
-
-
-
-
 ### ASVs seqs
 
 ```{r,echo=TRUE, eval=FALSE}
@@ -1757,10 +1743,7 @@ all_ps_tbl_blast$`ASV Size (pb)` %>% table() %>%  plot()
 
 ```
 
-
-
-
-###SWARM - ASVs to OTUs
+\#\#\#SWARM - ASVs to OTUs
 
 ```{r,echo=TRUE, eval=FALSE}
 
@@ -1865,13 +1848,8 @@ all_ps_tbl_blast %>% select(`final ID`,OTU) %>% select(OTU) %>% unique()
 all_ps_tbl_blast %>% select(`ASV (Sequence)`,`final ID`,OTU) %>% unique() 
 ```
 
+\#Reorder table
 
-
-
-
-
-
-#Reorder table
 ```{r, eval=FALSE}
 
 # all_ps_tbl_blast_bckp3 <- all_ps_tbl_blast
@@ -1978,8 +1956,7 @@ names(all_ps_tbl_blast)[which(names(all_ps_tbl_blast)== "ASV length")] <- "Size 
 
 ```
 
-
-#Identify ASVs present on the Blanks/Negative controls
+\#Identify ASVs present on the Blanks/Negative controls
 
 ```{r,echo=TRUE, eval=FALSE}
 
@@ -2167,18 +2144,8 @@ all_ps_tbl_blast$Remove %>%  table()
 
 ```
 
+\#\#\#save complete tables
 
-
-
-
-
-
-
-
-
-
-
-###save complete tables
 ```{r,echo=TRUE, eval=FALSE}
 
 
@@ -2354,12 +2321,6 @@ smp_abd_ID %>%
 
 ```
 
-
-
-
-
-
-
 ```{r echo=FALSE,eval=FALSE}
 # all_ps_tbl_blast_bckp5 <- all_ps_tbl_blast
 
@@ -2399,8 +2360,6 @@ all_ps_tbl_blast <- all_ps_tbl_blast %>% mutate("Probable bacteria" = if_else((s
 
 
 ```
-
-
 
 ## dendrograms of ASVs & db species
 
@@ -2483,15 +2442,8 @@ write(ASVs_fasta, "/home/gabriel/projetos/peixes-eDNA/analises/LGC_run5_22dez21/
 
 ```
 
+\#alpha and beta diversity
 
-
-
-
-
-
-
-
-#alpha and beta diversity
 ```{r,echo=TRUE, eval=FALSE}
 richness_plot <- plot_richness(physeq = all_ps, x = "File_name", measures=c("Chao1", "Shannon"),color ="Sample") +
   geom_point(size=5, alpha=0.7)
@@ -2536,21 +2488,7 @@ all_ps_tbl_blast[,-c(8:12,21:64,66:71)]
 
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-#Group species for ploting
-
-
-
+\#Group species for ploting
 
 ```{r,echo=TRUE, eval=FALSE}
 # all_ps_tbl_blast_bckp4 <- all_ps_tbl_blast
@@ -2682,9 +2620,10 @@ all_ps_tbl_blast <- all_ps_tbl_blast %>%
 
 ```
 
-#Remove unexpected species
+\#Remove unexpected species
 
-Since some species are clearly not from Jequitinhonha Ichthyofauna, we are going to mark them to be ommited from plots
+Since some species are clearly not from Jequitinhonha Ichthyofauna, we
+are going to mark them to be ommited from plots
 
 ```{r,echo=TRUE, eval=FALSE}
 all_ps_tbl_blast$`Curated ID` %>% unique() %>% sort() %>% paste0(collapse = '", \n"') %>% cat()
@@ -2723,11 +2662,9 @@ all_ps_tbl_blast$`Curated ID` %>% unique() %>% sort() %>% paste0(collapse = '", 
 
 ```
 
-
 # plots
 
 ## All samples plots
-
 
 ```{r,echo=TRUE, eval=FALSE}
 
@@ -2793,9 +2730,7 @@ ggsave(file = paste0(figs_path,"/",prjct_rad,"ASV_Sps_by_sample_BLAST_contam.pdf
 
 ```
 
-
 ## eDNA plots
-
 
 ```{r,echo=TRUE, eval=FALSE}
 
@@ -2954,9 +2889,6 @@ ggsave(file = paste0(figs_path,"/ichthyo_",prjct_rad,"_ASV_Sps_by_sample_BLAST.p
 
 ```
 
-
-
-
 ## ASV size plots
 
 ```{r,echo=TRUE, eval=FALSE}
@@ -2965,7 +2897,6 @@ ASV_legth_by_Sample |>
   plotly::ggplotly()
 
 ```
-
 
 ```{r,echo=TRUE, eval=FALSE}
 
@@ -3201,4 +3132,3 @@ ggsave(file = "~/prjcts/fish_eDNA/analysis_e10/results/ASV_Sps_by_sample_BLAST_n
 
 
 ```
-
