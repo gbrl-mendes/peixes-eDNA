@@ -1194,15 +1194,6 @@ View(mergers_csv_taxa)
 
 mergers_csv_taxa$Species %>%  unique()
 
-
-
-
-# mergers_csv_sp_tax <- left_join(x = mergers_csv_taxa,y = mergers_csv_sp, by = "ASV")
-#
-#
-# write.csv(x = mergers_csv_sp_tax,
-#           file = "~/prjcts/fish_eDNA/notes/1e2/results/1e2_ASVs_ID.csv")
-
 ```
 
 <br><br>
