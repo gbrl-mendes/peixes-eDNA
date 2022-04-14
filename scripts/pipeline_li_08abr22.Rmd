@@ -92,7 +92,7 @@ cutadapt <- "/usr/local/bin/cutadapt"
 # 1 - Definindo o caminhos de saida e de entrada ----
 
 # usar o mesmo caminho que foi criado na variavel do bash $PRJCT_DIR
-analysis_path <- "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22"
+analysis_path <- "/home/gabriel/projetos/peixes-eDNA/analises/teste_08abr22"
 
 # criacao do data_folder
 data_path <- paste0(analysis_path,"/data")
@@ -115,8 +115,9 @@ swarm_path <- paste0(results_path,"/swarm")
 if(!dir.exists(swarm_path)) dir.create(swarm_path)
 
 #criacao do radical do nome do projeto
-prjct_rad <-c("li_22mar22")
+prjct_rad <-c("teste_08abr22")
 
+#garantir que as pastas estao vazias
 list.files(analysis_path)
 
 # 2 - Indicar onde as reads brutas estao ----
@@ -138,7 +139,8 @@ Download das amostras demultiplexadas do *Illumina BaseSpace Sequence
 Hub* utilizando a interface *bs*.
 
 ```{bash, eval=FALSE}
-#navegando ate a pasta com os arquivos brutos
+
+# navegando ate a pasta com os arquivos brutos
 cd $raw_data_folder/$run_folder;
 
 #realizando a autenticacao no BaseSpace Sequence Hub (apenas no primeiro log in)
@@ -164,7 +166,7 @@ mv /home/heron/runs/run5_22dez21/fastq/*/*fastq.gz $RAW_DATA;
  Cada biblioteca possui amostras que estão combinadas sob um mesmo índex Illumina. Agora iremos utilizar as sequências dos primers indexados para selecionais quais reads correspondem a cada amostra única. Já que o kit de preparação de bibliotecas utilizado (Collibri -ThermoFisher) resulta em amplicons sequenciados em ambas orientações, iremos partir do princípio que é possível encontrar os primers FWD e REV em qualquer conjunto de reads. Para que as próximas etapas ocorram adequadamente, deveremos fornecer um arquivo .csv correspondente aos metadados associados a todas amostras.
  Esta tabela deve obrigatoriamente conter três colunas, *File_name*, *Tag FWD*, *Tag REV*. Cada *amostra* deve corresponder a um valor único em *File_name* e a uma combinação única de *Tag FWD* e *Tag REV*.
 
-## Regenerate index+primer
+## Regenerando index+primer
 
 ```{r, eval=FALSE,echo=TRUE}
 # carregar os indexes dos primers e a tabela de amostras 
@@ -172,37 +174,23 @@ mv /home/heron/runs/run5_22dez21/fastq/*/*fastq.gz $RAW_DATA;
 ## Esta é a entrada mais importante da analise 
 ### Este input e o arquivo .sv com colunas com valores unicos: File_name, (combined) "Tag FWD-Tag REV"
 
-primers_n_samples <- readr::read_csv(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/data/LI_primers_n_samples.csv")
+primers_n_samples <- readr::read_csv(file = "/home/gabriel/projetos/peixes-eDNA/analises/teste_08abr22/data/LI_primers_n_samples.csv")
 
 
-# check if is there any duplicated file name ----
+# conferir se há algum nome de arquivo duplicado ----
 primers_n_samples$File_name %>% length()
 primers_n_samples$File_name %>% unique() %>% length()
 primers_n_samples$File_name %>% duplicated() %>% which()
 primers_n_samples$File_name[primers_n_samples$File_name %>% duplicated()]
 
-# check if is there any duplicated tag pair ----
+# conferir se há alguma combinação de tags repetida ----
 select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% nrow()
 select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% unique() %>% nrow()
 select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% duplicated() %>% which()
 select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% duplicated() %>% which()
 primers_n_samples$File_name[select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% duplicated() %>% which()]
 
-
-
-# primers_n_samples <- primers_n_samples %>% 
-#   mutate(`Indexed primer FWD` = paste0(`Index FWD`,`Primer FWD`),
-#          `Indexed primer REV` = paste0(`Index REV`,`Primer REV`),
-#          `Tag FWD` = "Tag FWD",
-#          `Tag REV` = "Tag REV")
-
-# Print primers seqs to generate fasta to be used ahead
-# primers_n_samples$`Indexed primer FWD` %>% unique() %>% paste0("\n") %>% cat()
-# primers_n_samples$`Indexed primer REV` %>% unique() %>% paste0("\n") %>% cat()
-
-
-
-#load primers sequences without Ns ----
+#carregar sequências de primers sem Ns ----
 
 primers_seqs <-  Biostrings::readDNAStringSet(filepath = "/home/gabriel/projetos/peixes-eDNA/analyses/LGC_run5_22dez21/data/neo_miU_indexed_primers.fasta",format = "fasta")
 
@@ -211,26 +199,6 @@ primers_seqs <- primers_seqs %>%
   `colnames<-`("Primer seq") %>% 
   mutate(`Primer name` = rownames(.)) %>% 
   as_tibble()
-
-
-#match primers seqs and samples to set sample tag names
-# for (sample in 1:nrow(primers_n_samples)) {
-#   
-#   for (seq in 1:nrow(primers_seqs)) {
-#     
-#     if (primers_n_samples$`Indexed primer FWD`[sample] == primers_seqs$`Primer seq`[seq]) {
-#       
-#       primers_n_samples$`Tag FWD`[sample] <- primers_seqs$`Primer name`[seq]
-#       
-#     }
-#     
-#     if (primers_n_samples$`Indexed primer REV`[sample] == primers_seqs$`Primer seq`[seq]) {
-#       
-#       primers_n_samples$`Tag REV`[sample] <- primers_seqs$`Primer name`[seq]
-#       
-#     }
-#   }
-# }
 
 ```
 
@@ -458,11 +426,12 @@ sample_levels <- c(
 )
 ```
 
-## Working with clean reads
+## Trabalhando com as reads limpas
 
-Now that reads are clean and repaired, we can start DADA2 pipeline. The
-first step is to learn read-specific error rates that will guide
-dereplication.
+Agora que as reads estão limpas e repareadas, podemos iniciar o workflow do DADA2. 
+A primeira etapa é aprender as taxas de erro específicas por read, que irão orientar
+a dereplicação.
+
 
 ```{r, echo=TRUE, eval=FALSE}
 
