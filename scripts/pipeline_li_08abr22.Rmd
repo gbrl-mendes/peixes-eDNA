@@ -26,7 +26,7 @@ knitr::opts_chunk$set(echo = TRUE)
 load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/li_22mar22-env_2022-03-23_blast.RData")
 ```
 
-# Introdução
+## Introdução
 
 Este *pipeline* foi desenvolvido pelo Dr. Heron Hilário e comentado e
 adaptado por Gabriel Antônio Mendes. Seu desenvolvimento ocorreu sob
@@ -59,15 +59,15 @@ Se você tem alguma dúvida ou sugestão, por favor sinta-se à vontade para
 escrever um e-mail para
 [lgc.edna\@gmail.com](mailto:lgc.edna@gmail.com){.email}
 
-# Preparação
+## Preparação
 
-## Load *R libs* and system programs.
+Carregando bibliotecas do *R* e programas do sistema.
 
 ```{r, eval=FALSE,echo=TRUE}
 
-#carregando o arquivo de environment do projeto e Rmd e os pacotes necessarios
+## Carregando o arquivo de environment do projeto e Rmd e os pacotes necessários
 
-# 0 - Carregando pacotes ----
+# Carregando pacotes ----
 {
   library(dplyr)
   library(tidyr)
@@ -82,12 +82,12 @@ escrever um e-mail para
   library(future)
 }
 
-#definindo o caminho para o executavel do cutadapt
+## Definindo o caminho para o executável do cutadapt
 
 cutadapt <- "/usr/local/bin/cutadapt"
 
 
-#definindo o caminho das pastas essenciais para o projeto
+# Definindo o caminho das pastas essenciais para o projeto:
 
 # 1 - Definindo o caminhos de saida e de entrada ----
 
@@ -133,7 +133,7 @@ list.files(path = raw_libs)
 
 ```
 
-# Obtenção dos dados
+## Obtenção dos dados
 
 Download das amostras demultiplexadas do *Illumina BaseSpace Sequence
 Hub* utilizando a interface *bs*.
@@ -161,12 +161,24 @@ mkdir $RAW_DATA;
 mv /home/heron/runs/run5_22dez21/fastq/*/*fastq.gz $RAW_DATA; 
 ```
 
-# Demultiplexando as amostras
+## Demultiplexando as amostras
 
- Cada biblioteca possui amostras que estão combinadas sob um mesmo índex Illumina. Agora iremos utilizar as sequências dos primers indexados para selecionais quais reads correspondem a cada amostra única. Já que o kit de preparação de bibliotecas utilizado (Collibri -ThermoFisher) resulta em amplicons sequenciados em ambas orientações, iremos partir do princípio que é possível encontrar os primers FWD e REV em qualquer conjunto de reads. Para que as próximas etapas ocorram adequadamente, deveremos fornecer um arquivo .csv correspondente aos metadados associados a todas amostras.
- Esta tabela deve obrigatoriamente conter três colunas, *File_name*, *Tag FWD*, *Tag REV*. Cada *amostra* deve corresponder a um valor único em *File_name* e a uma combinação única de *Tag FWD* e *Tag REV*.
+-   Cada biblioteca possui amostras que estão combinadas sob um mesmo
+    índex Illumina. Agora iremos utilizar as sequências dos primers
+    indexados para selecionais quais reads correspondem a cada amostra
+    única. Já que o kit de preparação de bibliotecas utilizado (Collibri
+    -ThermoFisher) resulta em amplicons sequenciados em ambas
+    orientações, iremos partir do princípio que é possível encontrar os
+    primers FWD e REV em qualquer conjunto de reads. Para que as
+    próximas etapas ocorram adequadamente, deveremos fornecer um arquivo
+    .csv correspondente aos metadados associados a todas amostras.
 
-## Regenerando index+primer
+-   Esta tabela deve obrigatoriamente conter três colunas, *File_name*,
+    *Tag FWD*, *Tag REV*. Cada *amostra* deve corresponder a um valor
+    único em *File_name* e a uma combinação única de *Tag FWD* e *Tag
+    REV*.
+
+### Regenerando index+primer
 
 ```{r, eval=FALSE,echo=TRUE}
 # carregar os indexes dos primers e a tabela de amostras 
@@ -201,7 +213,7 @@ primers_seqs <- primers_seqs %>%
 
 ```
 
-## Demultiplexing with cutadapt
+### Demultiplexando com cutadapt
 
 <https://cutadapt.readthedocs.io/en/stable/guide.html#combinatorial-demultiplexing>
 
@@ -234,49 +246,49 @@ find ~/runs/run_28out21/dmux_CDI$ \
 
 ```
 
+## Preparação dos arquivos brutos para o DADA2
 
-# Preparação dos arquivos brutos para o DADA2
-
-## Preparando os arquivos
-
+### Preparando os arquivos
 
 ```{r, eval=FALSE,echo=TRUE}
 
-# criação do objeto libs_path com o caminho das bibliotecas demultiplexadas na eDNA: 
+## Criação do objeto libs_path com o caminho das bibliotecas demultiplexadas na eDNA: 
 libs_path <- "/home/gabriel/projetos/peixes-eDNA/raw"
   
 
 all_fnFs <- sort(list.files(libs_path, pattern=".R1.fastq", full.names = TRUE))
 all_fnRs <- sort(list.files(libs_path, pattern=".R2.fastq", full.names = TRUE))
 
-# confira se ambos os objetos possuem tamanhos idênticos:
+## Confira se ambos os objetos possuem tamanhos idênticos:
 length(all_fnFs) 
 length(all_fnRs)
 
-#6- carregando os dados das amostras (origem e indexes)
+carregando os dados das amostras (origem e indexes)
 
 colnames(primers_n_samples)
 
 sample_idx_tbl <- primers_n_samples %>% select(c("File_name", "Tag FWD", "Tag REV"))
 
-# ??? para que servem as duas próximas linhas?
+# Verificar se existem amostras com nomes repetidos:
 sample_idx_tbl$File_name %>% unique()
 sample_idx_tbl$File_name[sample_idx_tbl$File_name %>% duplicated()]
+# Não devem haver amostras com nomes iguais!! 
+# Caso existam, editar na tabela primers_n_samples!
 
 
-# criação das colunas Lib name F a partir dos indexes FWD e REV de cada amostra, contida em primers_n_samples:
+# Criação das colunas Lib name F a partir dos indexes FWD e REV de cada amostra, contida em primers_n_samples:
 sample_idx_tbl <- sample_idx_tbl %>%
   unite(col = `Lib name F`,c(`Tag FWD`,`Tag REV`), sep = "-", remove = FALSE) %>%
   unite(col = `Lib name R`,c(`Tag REV`,`Tag FWD`), sep = "-", remove = FALSE)
 
-# adicionando na tabela sample_idx_table as colunas FWD_R1, FWD_R2, REV_R1 e REV_R2:
+# Adicionando na tabela sample_idx_table as colunas FWD_R1, FWD_R2, REV_R1 e REV_R2:
 sample_idx_tbl <- sample_idx_tbl %>%
   mutate("FWD_R1" = "F-R1",
          "FWD_R2" = "F-R2",
          "REV_R1" = "R-R1",
          "REV_R2" = "R-R2")
 
-# substituindo o conteúdo das colunas FWD_R1, FWD_R2, REV_R1 e REV_R2 pelo endereço de cada amostra na pasta peixes-eDNA/raw
+# Substituindo o conteúdo das colunas FWD_R1, FWD_R2, REV_R1 e REV_R2 pelo endereço de cada amostra na pasta peixes-eDNA/raw
 for (sample in 1:nrow(sample_idx_tbl)) {
 
   sample_idx_tbl$FWD_R1[sample] <-
@@ -294,7 +306,7 @@ for (sample in 1:nrow(sample_idx_tbl)) {
 }
 
 
-# adicionando na tabela sample_idx_table as colunas FWD_R1_paired, FWD_R2_paired, REV_R1_paired e REV_R2_paired:
+# Adicionando na tabela sample_idx_table as colunas FWD_R1_paired, FWD_R2_paired, REV_R1_paired e REV_R2_paired:
 sample_idx_tbl <- sample_idx_tbl %>%
   mutate("FWD_R1_paired" = "fwd_R1_paired",
          "FWD_R2_paired" = "fwd_R2_paired",
@@ -302,11 +314,11 @@ sample_idx_tbl <- sample_idx_tbl %>%
          "REV_R2_paired" = "rev_R2_paired")
 
 
-# criando o diretório /data/paired para armazenar as reads pareadas que forem recuperadas:
+# Criando o diretório /data/paired para armazenar as reads pareadas que forem recuperadas:
 dir.create(path = paste0(pipe_libs,"/paired"),showWarnings = TRUE) 
 
 
-# preenchendo na tabela sample_idx_table as colunas relativas às reads pareadas FWD_R1_paired, FWD_R2_paired, REV_R1_paired e REV_R2_paired com os nomes das reads que serão pareadas:
+# Preenchendo na tabela sample_idx_table as colunas relativas às reads pareadas FWD_R1_paired, FWD_R2_paired, REV_R1_paired e REV_R2_paired com os nomes das reads que serão pareadas:
 for (sample in 1:nrow(sample_idx_tbl)) {
 
   sample_idx_tbl$FWD_R1_paired[sample] <-
@@ -324,7 +336,7 @@ for (sample in 1:nrow(sample_idx_tbl)) {
 }
 
 
-# nomeando as reads com o nome das amostras ----
+# Nomeando as reads com o nome das amostras ----
 {
   names(sample_idx_tbl$FWD_R1) <- sample_idx_tbl$File_name
   names(sample_idx_tbl$FWD_R2) <- sample_idx_tbl$File_name
@@ -336,56 +348,75 @@ for (sample in 1:nrow(sample_idx_tbl)) {
   names(sample_idx_tbl$REV_R2_paired) <- sample_idx_tbl$File_name
 }
 
-# concatenando os endereços das reads R1 no objeto reads_fnFs
-reads_fnFs <- c(sample_idx_tbl$FWD_R1,sample_idx_tbl$REV_R1)
+# Concatenações ----
+{
+  # concatenando os endereços das reads R1 no objeto reads_fnFs
+  reads_fnFs <- c(sample_idx_tbl$FWD_R1,sample_idx_tbl$REV_R1)
 
-# concatenando os endereços das reads R2 no objeto reads_fnRs
-reads_fnRs <- c(sample_idx_tbl$FWD_R2,sample_idx_tbl$REV_R2)
+  # concatenando os endereços das reads R2 no objeto reads_fnRs
+  reads_fnRs <- c(sample_idx_tbl$FWD_R2,sample_idx_tbl$REV_R2)
 
-# concatenando os endereços das reads R1 pareadas no objeto reads_fnFs_paired
-reads_fnFs_paired <- c(sample_idx_tbl$FWD_R1_paired,sample_idx_tbl$REV_R1_paired)
+  # concatenando os endereços das reads R1 pareadas no objeto reads_fnFs_paired
+  reads_fnFs_paired <- c(sample_idx_tbl$FWD_R1_paired,sample_idx_tbl$REV_R1_paired)
 
-# concatenando os endereços das reads R1 pareadas no objeto reads_fnRs_paired
-reads_fnRs_paired <- c(sample_idx_tbl$FWD_R2_paired,sample_idx_tbl$REV_R2_paired)
+  # concatenando os endereços das reads R1 pareadas no objeto reads_fnRs_paired
+  reads_fnRs_paired <- c(sample_idx_tbl$FWD_R2_paired,sample_idx_tbl$REV_R2_paired)
+}
 
-# conferindo os tamanhos dos vetores. Devem ter o mesmo tamanho
-length(reads_fnFs)
-length(reads_fnRs)
-length(reads_fnFs_paired)
-length(reads_fnRs_paired)
 
-# conferindo os nomes dos vetores. Devem ter os mesmos nomes, neste caso, o nome das amostras
-names(reads_fnFs)
-names(reads_fnRs)
-names(reads_fnFs_paired)
-names(reads_fnRs_paired)
+# Conferindo os tamanhos dos vetores. Devem ter o mesmo tamanho:
+{
+  length(reads_fnFs)
+  length(reads_fnRs)
+  length(reads_fnFs_paired)
+  length(reads_fnRs_paired)
+}
 
-# ??? para que servem estas linhas?
-reads_fnFs[69]
-reads_fnRs[69]
-reads_fnFs_paired[69]
-reads_fnRs_paired[69]
+
+# Conferindo os nomes dos vetores. Devem ter os mesmos nomes, neste caso, o nome das amostras
+{
+  names(reads_fnFs)
+  names(reads_fnRs)
+  names(reads_fnFs_paired)
+  names(reads_fnRs_paired)
+
+}
+
+# Verificar se cada arquivo com o mesmo índice possui o mesmo nome relacionado à amostra correspondente (1:24)
+{
+  reads_fnFs[20]
+  reads_fnRs[20]
+  reads_fnFs_paired[20]
+  reads_fnRs_paired[20]
+}
 
 ```
 
-## Realizando a filtragem das reads com DADA2
+### Filtragem e o repareamento das reads com DADA2
 
-Etapa prévia de filtragem das reads com o DADA2.
+Etapa prévia de filtragem e repareamento das reads com o DADA2.
+
+O comando fastqPairedFilter do pacote DADA2 será utilizado a partir dos
+seguintes parâmetros:
+
+-   maxN = c(0,0): descarte das reads com N's
+
+-   maxEE = c(2,2): remoção das reads com taxa de erro maior que 2
+
+-   matchIDs = True: remoção das reads não-pareadas
+
+-   isPhiX = True: descarte das reads de PhiX
+
+Outras flags:
+
+-   'compress = True' irá determinar que os arquivos de saída serão
+    .gzip
+
+-   'verbose = TRUE' determina que mensagens de erro irão aparecer
 
 ```{r, eval=FALSE,echo=TRUE}
+
 # Filtrando as reads demultiplexadas ----
-
-  # Será realizada a filtragem das reads brutas a partir dos seguintes parâmetros:
-  
-    # descarte das reads com N's (maxN = c(0,0))
-    # remoção das reads com taxa de erro maior que 2 (maxEE = c(2,2))
-    # remoção das reads não-pareadas (matchIDs = True)
-    # descarte das reads de PhiX (isPhiX = True)
-
-  # Outras flags:
-  
-    # O parâmetro 'compress = True' irá determinar que os arquivos de saída serão .gzip;
-    # 'verbose = TRUE' determina que mensagens de erro irão aparecer
 
 for (lib in 1:length(reads_fnFs)) {
 
@@ -404,9 +435,15 @@ for (lib in 1:length(reads_fnFs)) {
 
   # Preste atenção aos avisos, eles irão indicar quais tags estão com reads vazias ou ausentes
 
-# Definindo os níveis das amostras ----
+```
 
-  # Definindo a ordem em que as amostras irão aparecer nos gráficos.
+### Definindo o nível das amostras
+
+Definindo a ordem que o nome das amostras irão aparecer nos gráficos.
+
+```{r, eval=FALSE,echo=TRUE}
+
+# Definindo os níveis das amostras ----
 
 sample_idx_tbl$File_name %>% unique() %>% sort() %>% paste0(collapse = '",\n"') %>% cat()
 
@@ -426,88 +463,93 @@ sample_levels <- c(
 )
 ```
 
-
 ## Trabalhando com as reads limpas
 
-Agora que as reads estão limpas e repareadas, podemos iniciar o workflow do DADA2. 
-A primeira etapa é aprender as taxas de erro específicas por read, que irão orientar
-a dereplicação.
-
+Agora que as reads estão limpas e repareadas, podemos iniciar o workflow
+do DADA2. A primeira etapa é aprender as taxas de erro específicas por
+read, que irão orientar a dereplicação. A dereplicação é o processo de
+agrupar as ASVs como sequências únicas.
 
 ```{r, echo=TRUE, eval=FALSE}
 
 ## Checar a qualidade das reads pareadas
 dada2::plotQualityProfile(reads_fnFs_paired[1:24])
 
-  ## Se a tolerância aos erros for muito baixa, (ie. -e 0), alguns arquivos deixarão de existir.
+## Se a tolerância aos erros for muito baixa, (ie. -e 0), alguns arquivos deixarão de existir.
 
 file.exists(sample_idx_tbl$FWD_R1_paired)
 file.exists(sample_idx_tbl$REV_R1_paired)
 file.exists(sample_idx_tbl$FWD_R2_paired)
 file.exists(sample_idx_tbl$REV_R2_paired)
 
-#lets see which samples' files are missing ----
 
+## Verificando quais amostras possuem arquivos faltando
 sample_idx_tbl$FWD_R1_paired[!file.exists(sample_idx_tbl$FWD_R1_paired)]
 sample_idx_tbl$REV_R1_paired[!file.exists(sample_idx_tbl$REV_R1_paired)]
 sample_idx_tbl$FWD_R2_paired[!file.exists(sample_idx_tbl$FWD_R2_paired)]
 sample_idx_tbl$REV_R2_paired[!file.exists(sample_idx_tbl$REV_R2_paired)]
 
 
-#TODO This part must be parallelized by run, using the run column from the sample table
-# learn error rates ----
-
-#run LGC_MiniSeq_run_28out21 ----
-#R1 reads
+## Aprendendo as taxas de erro ----
+{
+  ## R1 
 run_errF <- learnErrors(c(sample_idx_tbl$FWD_R1_paired[file.exists(sample_idx_tbl$FWD_R1_paired)],
                            sample_idx_tbl$REV_R1_paired[file.exists(sample_idx_tbl$REV_R1_paired)]),
                          multithread=TRUE,randomize = TRUE)
-#R2 reads
+  ## R2
 run_errR <- learnErrors(c(sample_idx_tbl$FWD_R2_paired[file.exists(sample_idx_tbl$FWD_R2_paired)],
                            sample_idx_tbl$REV_R2_paired[file.exists(sample_idx_tbl$REV_R2_paired)]),
                          multithread=TRUE,randomize = TRUE)
+}
+
 
 ```
 
-### Dereplication: grouping into ASVs
+### Dereplicação: agrupando as sequências em ASVs
 
-On this step each library is reduced to its unique composing sequences
-and their counts.
+Nesta etapa cada bibilioteca é reduzida a suas sequências únicas e suas contagens.
 
 ```{r, eval=FALSE}
-# 14 - dada dereplication ----
 
+## Dereplicação do DADA ----
 
-#LGC_run5_22dez21 ----
+## Reads R1
 {
-  # R1
-  #reads from de R1 files, FWD oriented
+  ## Reads dos arquivos R1, de orientação FWD
   LGC_run_derep_FWD_R1 <- derepFastq(sample_idx_tbl$FWD_R1_paired[file.exists(sample_idx_tbl$FWD_R1_paired)], verbose=TRUE)
-  # names(all_derep_forward) <- all_sample.names
-  #reads from de R1 files, REV oriented
-  LGC_run_derep_REV_R1 <- derepFastq(sample_idx_tbl$REV_R1_paired[file.exists(sample_idx_tbl$REV_R1_paired)], verbose=TRUE)
-  # names(all_derep_forward) <- all_sample.names
   
-  # R2
-  #reads from de R2 files, FWD oriented
+  ## Reads dos arquivos R1, de orientação REV
+  LGC_run_derep_REV_R1 <- derepFastq(sample_idx_tbl$REV_R1_paired[file.exists(sample_idx_tbl$REV_R1_paired)], verbose=TRUE)
+}
+
+## Reads R2
+{
+  ## Reads dos arquivos R2, de orientação FWD
   LGC_run_derep_FWD_R2 <- derepFastq(sample_idx_tbl$FWD_R2_paired[file.exists(sample_idx_tbl$FWD_R2_paired)], verbose=TRUE)
-  # names(all_derep_reverse) <- all_sample.names
-  #reads from de R2 files, REV oriented
+  
+  ##  Reads dos arquivos R2, de orientação REV
   LGC_run_derep_REV_R2 <- derepFastq(sample_idx_tbl$REV_R2_paired[file.exists(sample_idx_tbl$REV_R2_paired)], verbose=TRUE)
-  # names(all_derep_reverse) <- all_sample.names
+}
+  
+  
+## Visualizar quantas reads foram agrupadas em sequências únicas em cada arquivo
+
+  ## R1 FWD
   LGC_run_FWD_dadaFs <- dada(LGC_run_derep_FWD_R1, err=run_errF, multithread=TRUE)
+  ## R1 REV
   LGC_run_REV_dadaFs <- dada(LGC_run_derep_REV_R1, err=run_errF, multithread=TRUE)
+  ## R2 FWD
   LGC_run_FWD_dadaRs <- dada(LGC_run_derep_FWD_R2, err=run_errR, multithread=TRUE)
+   ## R2 REV 
   LGC_run_REV_dadaRs <- dada(LGC_run_derep_REV_R2, err=run_errR, multithread=TRUE)
 }
 
 
 ```
 
-### Merging single reads into ASVs
+### Unindo as sequências em ASVs
 
-On this step each library is reduced to its unique composing sequences
-and their counts.
+???????
 
 ```{r, eval=FALSE}
 
@@ -543,7 +585,6 @@ length(run_mergers_FWD)
 length(run_mergers_REV)
 ```
 
-<br>
 
 # Seqtab
 
@@ -658,7 +699,6 @@ table(nchar(getSequences(mergers_seqtab))) %>% plot()
 
 ```
 
-<br>
 
 ```{r, eval=FALSE}
 # 16 - remove chimeras ----
@@ -674,7 +714,6 @@ rownames(mergers_seqtab)
 
 ```
 
-<br>
 
 ### Count reads and remaining ASVs
 
@@ -951,7 +990,7 @@ View(mergers_sps)
 ```
 
 ```{r, eval=FALSE}
-#20 - classify taxonomy ----
+## Classify taxonomy ----
 mergers_taxa <- dada2::assignTaxonomy(seqs = mergers_seqtab.nochim,
                                   refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
                                   multithread=TRUE, tryRC=TRUE,taxLevels = c("Kingdom","Phylum","Class","Order","Family", "Genus", "Species","Specimen","Basin"),
@@ -975,19 +1014,14 @@ mergers_csv_taxa$Species %>%  unique()
 
 ```
 
-<br><br>
 
 Here the **DADA2** pipeline ends.
-
-<br><br><br><br>
 
 \#\# Phyloseq
 
 On this step the ASVs associated to taxonomic ranks by **DADA2** and
 their respective counts by library, are combined using the **Phyloseq**
 package.
-
-<br>
 
 \#\#\# Generate sample metadata table
 
@@ -1022,11 +1056,9 @@ samdf <- samdf %>% as.data.frame()
   rownames(samdf) <- samdf$File_name
 ```
 
-<br>
 
 This sample metadata table must be customized for each experiment.
 
-<br>
 
 ### **Phyloseq** data interpretation
 
@@ -1045,7 +1077,6 @@ View(mergers_taxa$tax)
 
 ```
 
-<br>
 
 ### Merge and Flex Phyloseq results
 
