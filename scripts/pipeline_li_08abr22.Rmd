@@ -28,36 +28,11 @@ load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/li_22mar22-e
 
 ## Introdução
 
-Este *pipeline* foi desenvolvido pelo Dr. Heron Hilário e comentado e
-adaptado por Gabriel Antônio Mendes. Seu desenvolvimento ocorreu sob
-orientação do Professor Dr. Daniel de Cardoso Carvalho no Laboratório de
-Genética da Conservação da Pontífice Universidade Católica de Minas
-Gerais, Brasil (LGC PUC-MG).
+Este *pipeline* foi desenvolvido pelo Dr. Heron Hilário e comentado e adaptado por Gabriel Antônio Mendes. Seu desenvolvimento ocorreu sob orientação do Professor Dr. Daniel de Cardoso Carvalho no Laboratório de Genética da Conservação da Pontífice Universidade Católica de Minas Gerais, Brasil (LGC PUC-MG). Este código possui como objetivo principal realizar a identificação taxonômica de amplicons gerados a partir do material genético extraído de amostras ambientais, como água ou solo. Ele foi desenvolvido tendo em seu núcleo o uso do pacote dada2, que utiliza do algorítmo DADA2 para inferir as sequências exatas das variantes de amplicons (ASVs), a partir de dados HTS *(High Throughput Sequencig)* gerados por sequenciamentos Illumina.
 
-Este código possui como objetivo principal realizar a identificação
-taxonômica de amplicons gerados a partir do material genético extraído
-de amostras ambientais, como água ou solo. Ele foi desenvolvido tendo em
-seu núcleo o uso do pacote dada2, que utiliza do algorítmo DADA2 para
-inferir as sequências exatas das variantes de amplicons (ASVs), a partir
-de dados HTS *(High Throughput Sequencig)* gerados por sequenciamentos
-Illumina.
+Para a realização da inferência taxonômica das ASVs utilizamos de referência um banco de dados próprio, o db12SLGC, onde estão depositadas as sequências do gene rRNA mitocondrial 12S das espécies de peixes das bacias dos Rio Jequitinhonha e São Francisco. O DADA2 pode não ser suficiente para realizar a atribuição taxonômica de todos os amplicons gerados, e por isso também foi implementado no *pipeline* a identificação a partir do BLAST, realizada simultaneamente. Atualmente, sabe-se que uma abordagem que utilize apenas a inferência da sequência exata das ASVs não é suficiente para realizar a identificação adequada. Por isso, o *eDNA-LGC Metagenomics Pipeline* utiliza também o SWARM para a realização da inferência de OTUs.
 
-Para a realização da inferência taxonômica das ASVs utilizamos de
-referência um banco de dados próprio, o db12SLGC, onde estão depositadas
-as sequências do gene rRNA mitocondrial 12S das espécies de peixes das
-bacias dos Rio Jequitinhonha e São Francisco. O DADA2 pode não ser
-suficiente para realizar a atribuição taxonômica de todos os amplicons
-gerados, e por isso também foi implementado no *pipeline* a
-identificação a partir do BLAST, realizada simultaneamente.
-
-Atualmente, sabe-se que uma abordagem que utilize apenas a inferência da
-sequência exata das ASVs não é suficiente para realizar a identificação
-adequada. Por isso, o *eDNA-LGC Metagenomics Pipeline* utiliza também o
-SWARM para a realização da inferência de OTUs.
-
-Se você tem alguma dúvida ou sugestão, por favor sinta-se à vontade para
-escrever um e-mail para
-[lgc.edna\@gmail.com](mailto:lgc.edna@gmail.com){.email}
+Se você tem alguma dúvida ou sugestão, por favor sinta-se à vontade para escrever um e-mail para [lgc.edna\@gmail.com](mailto:lgc.edna@gmail.com){.email}
 
 ## Preparação
 
@@ -135,8 +110,7 @@ list.files(path = raw_libs)
 
 ## Obtenção dos dados
 
-Download das amostras demultiplexadas do *Illumina BaseSpace Sequence
-Hub* utilizando a interface *bs*.
+Download das amostras demultiplexadas do *Illumina BaseSpace Sequence Hub* utilizando a interface *bs*.
 
 ```{bash, eval=FALSE}
 
@@ -163,20 +137,9 @@ mv /home/heron/runs/run5_22dez21/fastq/*/*fastq.gz $RAW_DATA;
 
 ## Demultiplexando as amostras
 
--   Cada biblioteca possui amostras que estão combinadas sob um mesmo
-    índex Illumina. Agora iremos utilizar as sequências dos primers
-    indexados para selecionais quais reads correspondem a cada amostra
-    única. Já que o kit de preparação de bibliotecas utilizado (Collibri
-    -ThermoFisher) resulta em amplicons sequenciados em ambas
-    orientações, iremos partir do princípio que é possível encontrar os
-    primers FWD e REV em qualquer conjunto de reads. Para que as
-    próximas etapas ocorram adequadamente, deveremos fornecer um arquivo
-    .csv correspondente aos metadados associados a todas amostras.
+-   Cada biblioteca possui amostras que estão combinadas sob um mesmo índex Illumina. Agora iremos utilizar as sequências dos primers indexados para selecionais quais reads correspondem a cada amostra única. Já que o kit de preparação de bibliotecas utilizado (Collibri-ThermoFisher) resulta em amplicons sequenciados em ambas orientações, iremos partir do princípio que é possível encontrar os primers FWD e REV em qualquer conjunto de reads. Para que as próximas etapas ocorram adequadamente, deveremos fornecer um arquivo .csv correspondente aos metadados associados a todas amostras.
 
--   Esta tabela deve obrigatoriamente conter três colunas, *File_name*,
-    *Tag FWD*, *Tag REV*. Cada *amostra* deve corresponder a um valor
-    único em *File_name* e a uma combinação única de *Tag FWD* e *Tag
-    REV*.
+-   Esta tabela deve obrigatoriamente conter três colunas, *File_name*, *Tag FWD*, *Tag REV*. Cada *amostra* deve corresponder a um valor único em *File_name* e a uma combinação única de *Tag FWD* e *Tag REV*.
 
 ### Regenerando index+primer
 
@@ -263,7 +226,7 @@ all_fnRs <- sort(list.files(libs_path, pattern=".R2.fastq", full.names = TRUE))
 length(all_fnFs) 
 length(all_fnRs)
 
-carregando os dados das amostras (origem e indexes)
+## Carregando os dados das amostras (origem e indexes)
 
 colnames(primers_n_samples)
 
@@ -396,8 +359,7 @@ reads_fnRs_paired[20]
 
 Etapa prévia de filtragem e repareamento das reads com o DADA2.
 
-O comando fastqPairedFilter do pacote DADA2 será utilizado a partir dos
-seguintes parâmetros:
+O comando fastqPairedFilter do pacote DADA2 será utilizado a partir dos seguintes parâmetros:
 
 -   maxN = c(0,0): descarte das reads com N's
 
@@ -409,8 +371,7 @@ seguintes parâmetros:
 
 Outras flags:
 
--   'compress = True' irá determinar que os arquivos de saída serão
-    .gzip
+-   'compress = True' irá determinar que os arquivos de saída serão .gzip
 
 -   'verbose = TRUE' determina que mensagens de erro irão aparecer
 
@@ -467,15 +428,12 @@ sample_levels <- c(
 
 ## Trabalhando com as reads limpas
 
-Agora que as reads estão limpas e repareadas, podemos iniciar o workflow
-do DADA2. A primeira etapa é aprender as taxas de erro específicas por
-read, que irão orientar a dereplicação. A dereplicação é o processo de
-agrupar as ASVs como sequências únicas.
+Agora que as reads estão limpas e repareadas, podemos iniciar o workflow do DADA2. A primeira etapa é aprender as taxas de erro específicas por read, que irão orientar a dereplicação. A dereplicação é o processo de agrupar as ASVs como sequências únicas.
 
 ```{r, echo=TRUE, eval=FALSE}
 
 ## Checar a qualidade das reads pareadas
-dada2::plotQualityProfile(reads_fnFs_paired[1:24])
+dada2::plotQualityProfile(reads_fnFs_paired[1:2])
 
 ## Se a tolerância aos erros for muito baixa, (ie. -e 0), alguns arquivos deixarão de existir ----
 
@@ -509,28 +467,27 @@ run_errR <- learnErrors(c(sample_idx_tbl$FWD_R2_paired[file.exists(sample_idx_tb
 
 ### Dereplicação: agrupando as sequências em ASVs
 
-Nesta etapa cada bibilioteca é reduzida a suas sequências únicas e suas
-contagens.
+Nesta etapa cada bibilioteca é reduzida a suas sequências únicas e suas contagens.
 
 ```{r, eval=FALSE}
 
 ## Dereplicação do DADA ----
 
-## Reads R1
+## Reads FWD
 {
-  ## Reads dos arquivos R1, de orientação FWD
+  ## Reads FWD, sequências R1
   LGC_run_derep_FWD_R1 <- derepFastq(sample_idx_tbl$FWD_R1_paired[file.exists(sample_idx_tbl$FWD_R1_paired)], verbose=TRUE)
   
-  ## Reads dos arquivos R1, de orientação REV
-  LGC_run_derep_REV_R1 <- derepFastq(sample_idx_tbl$REV_R1_paired[file.exists(sample_idx_tbl$REV_R1_paired)], verbose=TRUE)
+  ## Reads FWD, sequências R2
+  LGC_run_derep_FWD_R2 <- derepFastq(sample_idx_tbl$FWD_R2_paired[file.exists(sample_idx_tbl$FWD_R2_paired)], verbose=TRUE)
 }
 
-## Reads R2
+## Reads REV
 {
-  ## Reads dos arquivos R2, de orientação FWD
-  LGC_run_derep_FWD_R2 <- derepFastq(sample_idx_tbl$FWD_R2_paired[file.exists(sample_idx_tbl$FWD_R2_paired)], verbose=TRUE)
+  ## Reads REV, sequências R1
+  LGC_run_derep_REV_R1 <- derepFastq(sample_idx_tbl$REV_R1_paired[file.exists(sample_idx_tbl$REV_R1_paired)], verbose=TRUE)
   
-  ##  Reads dos arquivos R2, de orientação REV
+  ## Reads REV, sequências R2
   LGC_run_derep_REV_R2 <- derepFastq(sample_idx_tbl$REV_R2_paired[file.exists(sample_idx_tbl$REV_R2_paired)], verbose=TRUE)
 }
 
@@ -538,84 +495,85 @@ contagens.
 
 ### Inferência das amostras
 
-A função dada() recebe como entrada os sequências das *reads*
-dereplicadas e retorna a o conjunto de ASVs que representam as
-sequências biológicas reais. A inferência da composição de cada amostra
-é realizada a partir da remoção das sequências que possuem erro.
+A função dada() recebe como entrada os sequências das *reads* dereplicadas e retorna a o conjunto de ASVs que representam as sequências biológicas reais. A inferência da composição de cada amostra é realizada a partir da remoção das sequências que possuem erro.
 
 ```{r, eval=FALSE}
 
 ## Inferir as sequências a partir das reads dereplicadas ----
 
 {  
-  ## R1 FWD
-  LGC_run_FWD_dadaFs <- dada(LGC_run_derep_FWD_R1, err=run_errF, multithread=TRUE)
+  ## FWD R1
+  LGC_run_FWD_dadaR1 <- dada(LGC_run_derep_FWD_R1, err=run_errF, multithread=TRUE)
   
-  ## R1 REV
-  LGC_run_REV_dadaFs <- dada(LGC_run_derep_REV_R1, err=run_errF, multithread=TRUE)
+  ## FWD R2
+  LGC_run_FWD_dadaR2 <- dada(LGC_run_derep_FWD_R2, err=run_errR, multithread=TRUE)
   
-  ## R2 FWD
-  LGC_run_FWD_dadaRs <- dada(LGC_run_derep_FWD_R2, err=run_errR, multithread=TRUE)
   
-   ## R2 REV 
-  LGC_run_REV_dadaRs <- dada(LGC_run_derep_REV_R2, err=run_errR, multithread=TRUE)
+  ## REV R
+  LGC_run_REV_dadaR1 <- dada(LGC_run_derep_REV_R1, err=run_errF, multithread=TRUE)
+  
+  ## REV R2
+  LGC_run_REV_dadaR2 <- dada(LGC_run_derep_REV_R2, err=run_errR, multithread=TRUE)
 }
 
 ```
 
 ### Unindo as sequências em ASVs
 
-A função mergePairs realiza a união (merge) das *reads* FWD e REV,
-rejeitando os pares que não possuem sobreposição suficiente de 20 bases
-(minOverlap = 20) ou que tenham mismatches (maxMismatch = 0).
+A função mergePairs realiza a união (merge) das *reads* R1 e R2 que compõe as fitas FWD e REV, rejeitando os pares que não possuem sobreposição suficiente de 20 bases (minOverlap = 20) ou que tenham mismatches (maxMismatch = 0). 
 
 ```{r, eval=FALSE}
 
-# 15 - merge read pairs ----
-LGC_run_FWD_dadaFs
-LGC_run_REV_dadaFs
-LGC_run_FWD_dadaRs
-LGC_run_REV_dadaRs
+## Conferir os objetos que estão armazenando as sequências que o dada2 inferiu ----
+LGC_run_FWD_dadaR1
+LGC_run_FWD_dadaR2
+LGC_run_REV_dadaR1
+LGC_run_REV_dadaR2
+
+## Realizar a união dos sequências R1 e R2 da fita FWD e da fita REV
 
 ## FWD ----
-run_mergers_FWD <- mergePairs(dadaF = LGC_run_FWD_dadaFs,
+run_mergers_FWD <- mergePairs(dadaF = LGC_run_FWD_dadaR1,
                                derepF = LGC_run_derep_FWD_R1,
-                               dadaR = LGC_run_FWD_dadaRs,
+                               dadaR = LGC_run_FWD_dadaR2,
                                derepR = LGC_run_derep_FWD_R2,
                                minOverlap = 20,
-                               maxMismatch = 0,   # can be changed from 0 to 1 if missing pairs. Usualy not needed on good quality runs.
+                               maxMismatch = 0, ## pode ser alterado de 0 para 1 se tiverem pares faltando. Geralmente não é necessário em corridas de boa qualidade
                                returnReject = FALSE,
                                verbose=TRUE)
 
 
-#REV ----
-run_mergers_REV <- mergePairs(dadaF = LGC_run_REV_dadaFs,
+## REV ----
+run_mergers_REV <- mergePairs(dadaF = LGC_run_REV_dadaR1,
                                derepF = LGC_run_derep_REV_R1,
-                               dadaR = LGC_run_REV_dadaRs,
+                               dadaR = LGC_run_REV_dadaR2,
                                derepR = LGC_run_derep_REV_R2,
                                minOverlap = 20,
-                               maxMismatch = 0,   # can be changed from 0 to 1 if missing pairs. Usualy not needed on good quality runs.
+                               maxMismatch = 0, ## pode ser alterado de 0 para 1 se tiverem pares faltando. Geralmente não é necessário em corridas de boa qualidade
                                returnRejects = FALSE,
                                verbose=TRUE)
-
 
 length(run_mergers_FWD)
 length(run_mergers_REV)
 
 ```
 
-# Seqtab
+## Seqtab
 
-Now, since we have more than one read file pair with the same sample
-name, we will use a customized dada2 function
-(<https://github.com/benjjneb/dada2/issues/132>).
+Now, since we have more than one read file pair with the same sample name, we will use a customized dada2 function (<https://github.com/benjjneb/dada2/issues/132>).
+
+?????? perguntar para o heron o que essa trecho faz exatamente
 
 ```{r, echo=TRUE, eval=FALSE}
+
+  ## ?????
 sumSequenceTables <- function(table1, table2, ..., orderBy = "abundance") {
-  # Combine passed tables into a list
+  
+  ## Combine passed tables into a list
   tables <- list(table1, table2)
   tables <- c(tables, list(...))
-  # Validate tables
+  
+  ## Validate tables
   if(!(all(sapply(tables, dada2:::is.sequence.table)))) {
     stop("At least two valid sequence tables, and no invalid objects, are expected.")
   }
@@ -625,14 +583,16 @@ sumSequenceTables <- function(table1, table2, ..., orderBy = "abundance") {
   }
   seqs <- unique(c(sapply(tables, colnames), recursive=TRUE))
   sams <- unique(sample.names)
-  # Make merged table
+  
+  ## Make merged table
   rval <- matrix(0L, nrow=length(sams), ncol=length(seqs))
   rownames(rval) <- sams
   colnames(rval) <- seqs
   for(tab in tables) {
     rval[rownames(tab), colnames(tab)] <- rval[rownames(tab), colnames(tab)] + tab
   }
-  # Order columns
+  
+  ## Order columns
   if(!is.null(orderBy)) {
     if(orderBy == "abundance") {
       rval <- rval[,order(colSums(rval), decreasing=TRUE),drop=FALSE]
@@ -643,42 +603,37 @@ sumSequenceTables <- function(table1, table2, ..., orderBy = "abundance") {
   rval
 }
 
-# Generate sequence tables ----
+## Generate sequence tables ----
 
-# FWD & REV oriented mergers
+## FWD & REV oriented mergers
 run_seqtab_FWD <- makeSequenceTable(samples = run_mergers_FWD)
 run_seqtab_REV <- makeSequenceTable(samples = run_mergers_REV)
 
-
 colnames(run_seqtab_REV) <- dada2:::rc(colnames(run_seqtab_REV))
-# colnames(run_seqtab_REV2) <- dada2:::rc(colnames(run_seqtab_REV2))
+
+## colnames(run_seqtab_REV2) <- dada2:::rc(colnames(run_seqtab_REV2))
 
 
 #atenção. tem que inverter o R2 pra comar as tabelas aqui, antes do merge!!!!!!!!!!!
 
 mergers_seqtab <- sumSequenceTables(table1 = run_seqtab_FWD, table2 = run_seqtab_REV)
-# mergers_seqtab2 <- sumSequenceTables(table1 = run_seqtab_FWD, table2 = run_seqtab_REV2)
+## mergers_seqtab2 <- sumSequenceTables(table1 = run_seqtab_FWD, table2 = run_seqtab_REV2)
 
 
 dim(run_seqtab_FWD)
 dim(run_seqtab_REV)
 dim(mergers_seqtab)
-# dim(mergers_seqtab2)
+
+## R1/R2 unmerged ----
+
+FWD_dadaR1_seqtab <- makeSequenceTable(samples = LGC_run_FWD_dadaR1)
+FWD_dadaR2_seqtab <- makeSequenceTable(samples = LGC_run_FWD_dadaR2)
+
+REV_dadaR1_seqtab <- makeSequenceTable(samples = LGC_run_REV_dadaR1)
+REV_dadaR2_seqtab <- makeSequenceTable(samples = LGC_run_REV_dadaR2)
 
 
-
-# R1/R2 unmerged ----
-
-FWD_dadaFs_seqtab <- makeSequenceTable(samples = LGC_run_FWD_dadaFs)
-REV_dadaFs_seqtab <- makeSequenceTable(samples = LGC_run_REV_dadaFs)
-
-# colnames(REV_dadaFs_seqtab) <- dada2:::rc(colnames(REV_dadaFs_seqtab))
-
-FWD_dadaRs_seqtab <- makeSequenceTable(samples = LGC_run_FWD_dadaRs)
-REV_dadaRs_seqtab <- makeSequenceTable(samples = LGC_run_REV_dadaRs)
-
-
-#check object
+## check object
 dada2:::is.sequence.table(run_seqtab_FWD)
 dada2:::is.sequence.table(run_seqtab_REV)
 dada2:::is.sequence.table(R1_seqtab)
@@ -711,11 +666,6 @@ table(nchar(getSequences(mergers_seqtab))) %>% plot()
 
 ```
 
-```{r, eval=FALSE}
-#TODO
-#generate automatic plots for seqtabs
-
-```
 
 ```{r, eval=FALSE}
 # 16 - remove chimeras ----
