@@ -269,26 +269,27 @@ colnames(primers_n_samples)
 
 sample_idx_tbl <- primers_n_samples %>% select(c("File_name", "Tag FWD", "Tag REV"))
 
-# Verificar se existem amostras com nomes repetidos:
+## Verificar se existem amostras com nomes repetidos:
 sample_idx_tbl$File_name %>% unique()
 sample_idx_tbl$File_name[sample_idx_tbl$File_name %>% duplicated()]
-# Não devem haver amostras com nomes iguais!! 
-# Caso existam, editar na tabela primers_n_samples!
+
+## Não devem haver amostras com nomes iguais!! 
+## Caso existam, editar na tabela primers_n_samples!
 
 
-# Criação das colunas Lib name F a partir dos indexes FWD e REV de cada amostra, contida em primers_n_samples:
+## Criação das colunas Lib name F a partir dos indexes FWD e REV de cada amostra, contida em primers_n_samples:
 sample_idx_tbl <- sample_idx_tbl %>%
   unite(col = `Lib name F`,c(`Tag FWD`,`Tag REV`), sep = "-", remove = FALSE) %>%
   unite(col = `Lib name R`,c(`Tag REV`,`Tag FWD`), sep = "-", remove = FALSE)
 
-# Adicionando na tabela sample_idx_table as colunas FWD_R1, FWD_R2, REV_R1 e REV_R2:
+## Adicionando na tabela sample_idx_table as colunas FWD_R1, FWD_R2, REV_R1 e REV_R2:
 sample_idx_tbl <- sample_idx_tbl %>%
   mutate("FWD_R1" = "F-R1",
          "FWD_R2" = "F-R2",
          "REV_R1" = "R-R1",
          "REV_R2" = "R-R2")
 
-# Substituindo o conteúdo das colunas FWD_R1, FWD_R2, REV_R1 e REV_R2 pelo endereço de cada amostra na pasta peixes-eDNA/raw
+## Substituindo o conteúdo das colunas FWD_R1, FWD_R2, REV_R1 e REV_R2 pelo endereço de cada amostra na pasta peixes-eDNA/raw
 for (sample in 1:nrow(sample_idx_tbl)) {
 
   sample_idx_tbl$FWD_R1[sample] <-
@@ -348,47 +349,46 @@ for (sample in 1:nrow(sample_idx_tbl)) {
   names(sample_idx_tbl$REV_R2_paired) <- sample_idx_tbl$File_name
 }
 
-# Concatenações ----
+## Concatenações ----
 {
-  # concatenando os endereços das reads R1 no objeto reads_fnFs
+  ## concatenando os endereços das reads R1 no objeto reads_fnFs
   reads_fnFs <- c(sample_idx_tbl$FWD_R1,sample_idx_tbl$REV_R1)
 
-  # concatenando os endereços das reads R2 no objeto reads_fnRs
+  ## concatenando os endereços das reads R2 no objeto reads_fnRs
   reads_fnRs <- c(sample_idx_tbl$FWD_R2,sample_idx_tbl$REV_R2)
 
-  # concatenando os endereços das reads R1 pareadas no objeto reads_fnFs_paired
+  ## concatenando os endereços das reads R1 pareadas no objeto reads_fnFs_paired
   reads_fnFs_paired <- c(sample_idx_tbl$FWD_R1_paired,sample_idx_tbl$REV_R1_paired)
 
-  # concatenando os endereços das reads R1 pareadas no objeto reads_fnRs_paired
+  ## concatenando os endereços das reads R1 pareadas no objeto reads_fnRs_paired
   reads_fnRs_paired <- c(sample_idx_tbl$FWD_R2_paired,sample_idx_tbl$REV_R2_paired)
 }
 
 
-# Conferindo os tamanhos dos vetores. Devem ter o mesmo tamanho:
-{
-  length(reads_fnFs)
-  length(reads_fnRs)
-  length(reads_fnFs_paired)
-  length(reads_fnRs_paired)
-}
+## Conferindo os tamanhos dos vetores. Devem ter o mesmo tamanho ----
+
+length(reads_fnFs)
+length(reads_fnRs)
+length(reads_fnFs_paired)
+length(reads_fnRs_paired)
 
 
-# Conferindo os nomes dos vetores. Devem ter os mesmos nomes, neste caso, o nome das amostras
-{
-  names(reads_fnFs)
-  names(reads_fnRs)
-  names(reads_fnFs_paired)
-  names(reads_fnRs_paired)
+## Conferindo os nomes dos vetores. Devem ter os mesmos nomes, neste caso, o nome das amostras ----
 
-}
+names(reads_fnFs)
+names(reads_fnRs)
+names(reads_fnFs_paired)
+names(reads_fnRs_paired)
 
-# Verificar se cada arquivo com o mesmo índice possui o mesmo nome relacionado à amostra correspondente (1:24)
-{
-  reads_fnFs[20]
-  reads_fnRs[20]
-  reads_fnFs_paired[20]
-  reads_fnRs_paired[20]
-}
+
+
+## Verificar se cada arquivo com o mesmo índice possui o mesmo nome relacionado à amostra correspondente (1:24) ----
+
+reads_fnFs[20]
+reads_fnRs[20]
+reads_fnFs_paired[20]
+reads_fnRs_paired[20]
+
 
 ```
 
@@ -416,7 +416,7 @@ Outras flags:
 
 ```{r, eval=FALSE,echo=TRUE}
 
-# Filtrando as reads demultiplexadas ----
+## Filtrando as reads demultiplexadas ----
 
 for (lib in 1:length(reads_fnFs)) {
 
@@ -433,7 +433,7 @@ for (lib in 1:length(reads_fnFs)) {
 }
 
 
-  # Preste atenção aos avisos, eles irão indicar quais tags estão com reads vazias ou ausentes
+## Preste atenção aos avisos, eles irão indicar quais tags estão com reads vazias ou ausentes
 
 ```
 
@@ -443,9 +443,9 @@ Definindo a ordem que o nome das amostras irão aparecer nos gráficos.
 
 ```{r, eval=FALSE,echo=TRUE}
 
-# Definindo os níveis das amostras ----
-
-sample_idx_tbl$File_name %>% unique() %>% sort() %>% paste0(collapse = '",\n"') %>% cat()
+## Definindo os níveis das amostras ----
+{
+  sample_idx_tbl$File_name %>% unique() %>% sort() %>% paste0(collapse = '",\n"') %>% cat()
 
 sample_levels <- c(
 "L1_nov_dec_20_mi",
@@ -461,6 +461,8 @@ sample_levels <- c(
 "L3_nov21",
 "L4_nov21"
 )
+}
+
 ```
 
 ## Trabalhando com as reads limpas
@@ -475,7 +477,7 @@ agrupar as ASVs como sequências únicas.
 ## Checar a qualidade das reads pareadas
 dada2::plotQualityProfile(reads_fnFs_paired[1:24])
 
-## Se a tolerância aos erros for muito baixa, (ie. -e 0), alguns arquivos deixarão de existir.
+## Se a tolerância aos erros for muito baixa, (ie. -e 0), alguns arquivos deixarão de existir ----
 
 file.exists(sample_idx_tbl$FWD_R1_paired)
 file.exists(sample_idx_tbl$REV_R1_paired)
@@ -483,7 +485,7 @@ file.exists(sample_idx_tbl$FWD_R2_paired)
 file.exists(sample_idx_tbl$REV_R2_paired)
 
 
-## Verificando quais amostras possuem arquivos faltando
+## Verificando quais amostras possuem arquivos faltando ----
 sample_idx_tbl$FWD_R1_paired[!file.exists(sample_idx_tbl$FWD_R1_paired)]
 sample_idx_tbl$REV_R1_paired[!file.exists(sample_idx_tbl$REV_R1_paired)]
 sample_idx_tbl$FWD_R2_paired[!file.exists(sample_idx_tbl$FWD_R2_paired)]
@@ -507,7 +509,8 @@ run_errR <- learnErrors(c(sample_idx_tbl$FWD_R2_paired[file.exists(sample_idx_tb
 
 ### Dereplicação: agrupando as sequências em ASVs
 
-Nesta etapa cada bibilioteca é reduzida a suas sequências únicas e suas contagens.
+Nesta etapa cada bibilioteca é reduzida a suas sequências únicas e suas
+contagens.
 
 ```{r, eval=FALSE}
 
@@ -530,26 +533,41 @@ Nesta etapa cada bibilioteca é reduzida a suas sequências únicas e suas conta
   ##  Reads dos arquivos R2, de orientação REV
   LGC_run_derep_REV_R2 <- derepFastq(sample_idx_tbl$REV_R2_paired[file.exists(sample_idx_tbl$REV_R2_paired)], verbose=TRUE)
 }
-  
-  
-## Visualizar quantas reads foram agrupadas em sequências únicas em cada arquivo
 
+```
+
+### Inferência das amostras
+
+A função dada() recebe como entrada os sequências das *reads*
+dereplicadas e retorna a o conjunto de ASVs que representam as
+sequências biológicas reais. A inferência da composição de cada amostra
+é realizada a partir da remoção das sequências que possuem erro.
+
+```{r, eval=FALSE}
+
+## Inferir as sequências a partir das reads dereplicadas ----
+
+{  
   ## R1 FWD
   LGC_run_FWD_dadaFs <- dada(LGC_run_derep_FWD_R1, err=run_errF, multithread=TRUE)
+  
   ## R1 REV
   LGC_run_REV_dadaFs <- dada(LGC_run_derep_REV_R1, err=run_errF, multithread=TRUE)
+  
   ## R2 FWD
   LGC_run_FWD_dadaRs <- dada(LGC_run_derep_FWD_R2, err=run_errR, multithread=TRUE)
+  
    ## R2 REV 
   LGC_run_REV_dadaRs <- dada(LGC_run_derep_REV_R2, err=run_errR, multithread=TRUE)
 }
-
 
 ```
 
 ### Unindo as sequências em ASVs
 
-???????
+A função mergePairs realiza a união (merge) das *reads* FWD e REV,
+rejeitando os pares que não possuem sobreposição suficiente de 20 bases
+(minOverlap = 20) ou que tenham mismatches (maxMismatch = 0).
 
 ```{r, eval=FALSE}
 
@@ -559,7 +577,7 @@ LGC_run_REV_dadaFs
 LGC_run_FWD_dadaRs
 LGC_run_REV_dadaRs
 
-#run5 FWD ----
+## FWD ----
 run_mergers_FWD <- mergePairs(dadaF = LGC_run_FWD_dadaFs,
                                derepF = LGC_run_derep_FWD_R1,
                                dadaR = LGC_run_FWD_dadaRs,
@@ -570,7 +588,7 @@ run_mergers_FWD <- mergePairs(dadaF = LGC_run_FWD_dadaFs,
                                verbose=TRUE)
 
 
-#run5 REV ----
+#REV ----
 run_mergers_REV <- mergePairs(dadaF = LGC_run_REV_dadaFs,
                                derepF = LGC_run_derep_REV_R1,
                                dadaR = LGC_run_REV_dadaRs,
@@ -583,8 +601,8 @@ run_mergers_REV <- mergePairs(dadaF = LGC_run_REV_dadaFs,
 
 length(run_mergers_FWD)
 length(run_mergers_REV)
-```
 
+```
 
 # Seqtab
 
@@ -699,7 +717,6 @@ table(nchar(getSequences(mergers_seqtab))) %>% plot()
 
 ```
 
-
 ```{r, eval=FALSE}
 # 16 - remove chimeras ----
 
@@ -713,7 +730,6 @@ rownames(mergers_seqtab.nochim)
 rownames(mergers_seqtab)
 
 ```
-
 
 ### Count reads and remaining ASVs
 
@@ -1014,7 +1030,6 @@ mergers_csv_taxa$Species %>%  unique()
 
 ```
 
-
 Here the **DADA2** pipeline ends.
 
 \#\# Phyloseq
@@ -1056,9 +1071,7 @@ samdf <- samdf %>% as.data.frame()
   rownames(samdf) <- samdf$File_name
 ```
 
-
 This sample metadata table must be customized for each experiment.
-
 
 ### **Phyloseq** data interpretation
 
@@ -1076,7 +1089,6 @@ View(samdf)
 View(mergers_taxa$tax)
 
 ```
-
 
 ### Merge and Flex Phyloseq results
 
