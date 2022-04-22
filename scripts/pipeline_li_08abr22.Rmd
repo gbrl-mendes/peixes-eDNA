@@ -509,7 +509,7 @@ A função dada() recebe como entrada os sequências das *reads* dereplicadas e 
   LGC_run_FWD_dadaR2 <- dada(LGC_run_derep_FWD_R2, err=run_errR, multithread=TRUE)
   
   
-  ## REV R
+  ## REV R1
   LGC_run_REV_dadaR1 <- dada(LGC_run_derep_REV_R1, err=run_errF, multithread=TRUE)
   
   ## REV R2
@@ -532,8 +532,9 @@ LGC_run_REV_dadaR2
 
 ## Realizar a união dos sequências R1 e R2 da fita FWD e da fita REV
 
-## FWD ----
-run_mergers_FWD <- mergePairs(dadaF = LGC_run_FWD_dadaR1,
+## FWD
+{
+  run_mergers_FWD <- mergePairs(dadaF = LGC_run_FWD_dadaR1,
                                derepF = LGC_run_derep_FWD_R1,
                                dadaR = LGC_run_FWD_dadaR2,
                                derepR = LGC_run_derep_FWD_R2,
@@ -541,10 +542,13 @@ run_mergers_FWD <- mergePairs(dadaF = LGC_run_FWD_dadaR1,
                                maxMismatch = 0, ## pode ser alterado de 0 para 1 se tiverem pares faltando. Geralmente não é necessário em corridas de boa qualidade
                                returnReject = FALSE,
                                verbose=TRUE)
+  }
 
 
-## REV ----
-run_mergers_REV <- mergePairs(dadaF = LGC_run_REV_dadaR1,
+
+## REV
+{
+  run_mergers_REV <- mergePairs(dadaF = LGC_run_REV_dadaR1,
                                derepF = LGC_run_derep_REV_R1,
                                dadaR = LGC_run_REV_dadaR2,
                                derepR = LGC_run_derep_REV_R2,
@@ -552,21 +556,31 @@ run_mergers_REV <- mergePairs(dadaF = LGC_run_REV_dadaR1,
                                maxMismatch = 0, ## pode ser alterado de 0 para 1 se tiverem pares faltando. Geralmente não é necessário em corridas de boa qualidade
                                returnRejects = FALSE,
                                verbose=TRUE)
+  }
 
 length(run_mergers_FWD)
 length(run_mergers_REV)
 
 ```
 
-## Seqtab
+## Tabelas de abundâncias das ASVs (Sequence tables)
 
-Now, since we have more than one read file pair with the same sample name, we will use a customized dada2 function (<https://github.com/benjjneb/dada2/issues/132>).
-
-?????? perguntar para o heron o que essa trecho faz exatamente
+A função makeSequenceTable realiza a criação das Tabelas de abundâncias das ASVs (Sequence tables). Porém, como existem 2 conjuntos de ASVs, FWD e REV, suas Sequence tables devem ser unidas em uma só. Para tanto, iremos realizar uma função DADA2 customizada (<https://github.com/benjjneb/dada2/issues/132>).
 
 ```{r, echo=TRUE, eval=FALSE}
 
-  ## ?????
+## Geração das Sequence tables ----
+
+## Construção da matriz contendo as sequências e as amostras onde são encontradas
+{
+  run_seqtab_FWD <- makeSequenceTable(samples = run_mergers_FWD)
+run_seqtab_REV <- makeSequenceTable(samples = run_mergers_REV)  ## makeSequenceTable gera uma matriz (análoga à uma OTU table) que possui cada ASV em uma coluna e os nomes das amostras em que elas estão presentes nas linhas
+}
+
+## Complemento reverso (rc) das sequências REV salvas na run_seqtab_REV
+colnames(run_seqtab_REV) <- rc(colnames(run_seqtab_REV)) 
+
+## Código da função sumSequenceTables para realizar a soma das seqtabs run_seqtab_FWD e run_seq_tab_REV
 sumSequenceTables <- function(table1, table2, ..., orderBy = "abundance") {
   
   ## Combine passed tables into a list
@@ -603,69 +617,83 @@ sumSequenceTables <- function(table1, table2, ..., orderBy = "abundance") {
   rval
 }
 
-## Generate sequence tables ----
+## Merge das tabelas contendo as abundâncias das ASVs FWD e REV
+mergers_seqtab <- sumSequenceTables(table1 = run_seqtab_FWD, 
+                                    table2 = run_seqtab_REV)
 
-## FWD & REV oriented mergers
-run_seqtab_FWD <- makeSequenceTable(samples = run_mergers_FWD)
-run_seqtab_REV <- makeSequenceTable(samples = run_mergers_REV)
-
-colnames(run_seqtab_REV) <- dada2:::rc(colnames(run_seqtab_REV))
-
-## colnames(run_seqtab_REV2) <- dada2:::rc(colnames(run_seqtab_REV2))
-
-
-#atenção. tem que inverter o R2 pra comar as tabelas aqui, antes do merge!!!!!!!!!!!
-
-mergers_seqtab <- sumSequenceTables(table1 = run_seqtab_FWD, table2 = run_seqtab_REV)
-## mergers_seqtab2 <- sumSequenceTables(table1 = run_seqtab_FWD, table2 = run_seqtab_REV2)
-
-
+## Dimensões da tabela contendo a abundância das ASVs FWD e REV
 dim(run_seqtab_FWD)
 dim(run_seqtab_REV)
-dim(mergers_seqtab)
 
-## R1/R2 unmerged ----
+## Dimensões da tabela do merge das ASVs FWD e REV
+dim(mergers_seqtab) ## observar se está correto!!
 
-FWD_dadaR1_seqtab <- makeSequenceTable(samples = LGC_run_FWD_dadaR1)
+## Geração das Sequence tables R1/R2 unmerged ----
+
+## Seqtabs FWD
+{
+  FWD_dadaR1_seqtab <- makeSequenceTable(samples = LGC_run_FWD_dadaR1)
 FWD_dadaR2_seqtab <- makeSequenceTable(samples = LGC_run_FWD_dadaR2)
+}
 
-REV_dadaR1_seqtab <- makeSequenceTable(samples = LGC_run_REV_dadaR1)
+## Seqtabs REV
+{
+  REV_dadaR1_seqtab <- makeSequenceTable(samples = LGC_run_REV_dadaR1)
 REV_dadaR2_seqtab <- makeSequenceTable(samples = LGC_run_REV_dadaR2)
+}
+
+## Complemento reverso (rc) das sequências REV salvas na REV_dadaR1_seqtab e REV_dadaR2_seqtab
+{
+  colnames(REV_dadaR1_seqtab) <- dada2:::rc(colnames(REV_dadaR1_seqtab))
+colnames(REV_dadaR2_seqtab) <- dada2:::rc(colnames(REV_dadaR2_seqtab))
+}
+
+## Merge das tabelas contendo as abundâncias das ASVs R1 e R2
+{
+  R1_seqtab <- sumSequenceTables(table1 = FWD_dadaR1_seqtab,
+                               table2 = REV_dadaR1_seqtab)
+R2_seqtab <- sumSequenceTables(table1 = FWD_dadaR2_seqtab,
+                               table2 = REV_dadaR2_seqtab)
+}
+
+## Dimensões da tabela do merge das ASVs R1 e R2
+dim(R1_seqtab)
+dim(R2_seqtab) ## comparar se está correto!
 
 
-## check object
+## Checar objetos
 dada2:::is.sequence.table(run_seqtab_FWD)
 dada2:::is.sequence.table(run_seqtab_REV)
 dada2:::is.sequence.table(R1_seqtab)
 dada2:::is.sequence.table(R2_seqtab)
 dada2:::is.sequence.table(mergers_seqtab)
 
-length(run_seqtab_REV)
-length(run_seqtab_FWD)
-length(R1_seqtab)
-length(R2_seqtab)
-length(mergers_seqtab)
+#Checar dimensão dos objetos
+length(run_seqtab_FWD) ## Seqtab das ASVs criadas após o merge e a dereplicação
+length(run_seqtab_REV) ## Seqtab das ASVs criadas após o merge e a dereplicação
+length(R1_seqtab) ## Reads sem realizar o merge
+length(R2_seqtab) ## Reads sem realizar o merge
+length(mergers_seqtab) # Seqtab após a soma das abundâncias de run_seqtab_FWD e run_seqtab_REV
 
-
+## ????
 dim(run_seqtab_REV)
 dim(run_seqtab_FWD)
-#dim(R1_R2_seqtab)
 dim(all_seqtab)
 dim(mergers_seqtab)
-# View(seqtab)
 str(all_seqtab)
 str(mergers_seqtab)
 
 sample_idx_tbl$File_name %>% unique()
 
 
-# Inspect distribution of sequence lengths
+# Avaliar a distribuição do comprimento das sequências ----
 table(nchar(getSequences(run_seqtab_REV))) %>% plot()
 table(nchar(getSequences(run_seqtab_FWD))) %>% plot()
 table(nchar(getSequences(mergers_seqtab))) %>% plot()
 
 ```
 
+## Este trecho ainda não possui um título e uma explicação
 
 ```{r, eval=FALSE}
 # 16 - remove chimeras ----
