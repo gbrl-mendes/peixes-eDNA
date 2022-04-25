@@ -28,15 +28,39 @@ load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/li_22mar22-e
 
 ## Introdução
 
-Este *pipeline* foi desenvolvido pelo Dr. Heron Hilário e comentado e adaptado por Gabriel Antônio Mendes. Seu desenvolvimento ocorreu sob orientação do Professor Dr. Daniel de Cardoso Carvalho no Laboratório de Genética da Conservação da Pontífice Universidade Católica de Minas Gerais, Brasil (LGC PUC-MG). Este código possui como objetivo principal realizar a identificação taxonômica de amplicons gerados a partir do material genético extraído de amostras ambientais, como água ou solo. Ele foi desenvolvido tendo em seu núcleo o uso do pacote dada2, que utiliza do algorítmo DADA2 para inferir as sequências exatas das variantes de amplicons (ASVs), a partir de dados HTS *(High Throughput Sequencig)* gerados por sequenciamentos Illumina.
+Este *pipeline* foi desenvolvido pelo Dr. Heron Hilário e comentado e
+adaptado pelo aluno de mestrado Gabriel Antônio Mendes. Seu
+desenvolvimento ocorreu sob orientação do Professor Dr. Daniel de
+Cardoso Carvalho no Laboratório de Genética da Conservação da Pontífice
+Universidade Católica de Minas Gerais, Brasil (LGC PUC-MG). Este código
+possui como objetivo principal realizar a identificação taxonômica de
+amplicons gerados a partir do material genético extraído de amostras
+ambientais, como água ou solo. Ele foi desenvolvido tendo em seu núcleo
+o uso do pacote dada2, que utiliza do algorítmo DADA2 para inferir as
+sequências exatas das variantes de amplicons (ASVs), a partir de dados
+HTS *(High Throughput Sequencig)* gerados por sequenciamentos Illumina.
 
-Para a realização da inferência taxonômica das ASVs utilizamos de referência um banco de dados próprio, o db12SLGC, onde estão depositadas as sequências do gene rRNA mitocondrial 12S das espécies de peixes das bacias dos Rio Jequitinhonha e São Francisco. O DADA2 pode não ser suficiente para realizar a atribuição taxonômica de todos os amplicons gerados, e por isso também foi implementado no *pipeline* a identificação a partir do BLAST, realizada simultaneamente. Atualmente, sabe-se que uma abordagem que utilize apenas a inferência da sequência exata das ASVs não é suficiente para realizar a identificação adequada. Por isso, o *eDNA-LGC Metagenomics Pipeline* utiliza também o SWARM para a realização da inferência de OTUs.
+Para a realização da inferência taxonômica das ASVs utilizamos de
+referência um banco de dados próprio, o db12SLGC, onde estão depositadas
+as sequências do gene rRNA mitocondrial 12S das espécies de peixes das
+bacias dos Rio Jequitinhonha e São Francisco. O DADA2 pode não ser
+suficiente para realizar a atribuição taxonômica de todos os amplicons
+gerados, e por isso também foi implementado no *pipeline* a
+identificação a partir do BLAST, realizada simultaneamente. Atualmente,
+sabe-se que uma abordagem que utilize apenas a inferência da sequência
+exata das ASVs não é suficiente para realizar a identificação adequada.
+Por isso, o *eDNA-LGC Metagenomics Pipeline* utiliza também o SWARM para
+a realização da inferência de OTUs.
 
-Se você tem alguma dúvida ou sugestão, por favor sinta-se à vontade para escrever um e-mail para [lgc.edna\@gmail.com](mailto:lgc.edna@gmail.com){.email}
+Se você tem alguma dúvida ou sugestão, por favor sinta-se à vontade para
+escrever um e-mail para
+[lgc.edna\@gmail.com](mailto:lgc.edna@gmail.com){.email}
 
 ## Preparação
 
-Carregando bibliotecas do *R* e programas do sistema.
+O primeiro passo é carregar as bibliotecas dos pacotes do *R* que serão
+utilizados, os programas do sistema e definir os endereços das pastas
+que serão utilizadas.
 
 ```{r, eval=FALSE,echo=TRUE}
 
@@ -110,7 +134,8 @@ list.files(path = raw_libs)
 
 ## Obtenção dos dados
 
-Download das amostras demultiplexadas do *Illumina BaseSpace Sequence Hub* utilizando a interface *bs*.
+Download das amostras demultiplexadas do *Illumina BaseSpace Sequence
+Hub* utilizando a interface *bs*.
 
 ```{bash, eval=FALSE}
 
@@ -137,35 +162,52 @@ mv /home/heron/runs/run5_22dez21/fastq/*/*fastq.gz $RAW_DATA;
 
 ## Demultiplexando as amostras
 
--   Cada biblioteca possui amostras que estão combinadas sob um mesmo índex Illumina. Agora iremos utilizar as sequências dos primers indexados para selecionais quais reads correspondem a cada amostra única. Já que o kit de preparação de bibliotecas utilizado (Collibri-ThermoFisher) resulta em amplicons sequenciados em ambas orientações, iremos partir do princípio que é possível encontrar os primers FWD e REV em qualquer conjunto de reads. Para que as próximas etapas ocorram adequadamente, deveremos fornecer um arquivo .csv correspondente aos metadados associados a todas amostras.
+-   Cada biblioteca possui amostras que estão combinadas sob um mesmo
+    index Illumina. Agora iremos utilizar as sequências dos primers
+    indexados para selecionais quais *reads* correspondem a cada amostra
+    única. Como o kit de preparação de bibliotecas utilizado
+    (Collibri-ThermoFisher) resulta em *amplicons* sequenciados em ambas
+    orientações, iremos partir do princípio que é possível encontrar os
+    primers FWD e REV em qualquer conjunto de reads. Para que as
+    próximas etapas ocorram adequadamente, deveremos fornecer um arquivo
+    .csv correspondente aos metadados associados a todas amostras.
 
--   Esta tabela deve obrigatoriamente conter três colunas, *File_name*, *Tag FWD*, *Tag REV*. Cada *amostra* deve corresponder a um valor único em *File_name* e a uma combinação única de *Tag FWD* e *Tag REV*.
+-   Esta tabela deve obrigatoriamente conter três colunas, *File_name*,
+    *Tag FWD*, *Tag REV*. Cada *amostra* deve corresponder a um valor
+    único em *File_name* e a uma combinação única de *Tag FWD* e *Tag
+    REV*.
 
 ### Regenerando index+primer
 
-```{r, eval=FALSE,echo=TRUE}
-# carregar os indexes dos primers e a tabela de amostras 
+Este trecho possui a entrada mais importante da análise. Para dar
+continuidade, é necessário ter a tabela *primers_n\_samples*, que possui
+a relação da combinação de primers FWD e REV para cada amostra
+sequenciada.
 
-# Esta é a entrada mais importante da análise 
-# Este input e o arquivo .sv com colunas com valores unicos: File_name, (combined) "Tag FWD-Tag REV"
+```{r, eval=FALSE,echo=TRUE}
+
+## carregar os indexes dos primers e a tabela de amostras 
+
+## Esta é a entrada mais importante da análise 
+## Este input e o arquivo .sv com colunas com valores unicos: File_name, (combined) "Tag FWD-Tag REV"
 
 primers_n_samples <- readr::read_csv(file = "/home/gabriel/projetos/peixes-eDNA/analises/teste_08abr22/data/LI_primers_n_samples.csv")
 
 
-# conferir se há algum nome de arquivo duplicado ----
+## Conferir se há algum nome de arquivo duplicado ----
 primers_n_samples$File_name %>% length()
 primers_n_samples$File_name %>% unique() %>% length()
 primers_n_samples$File_name %>% duplicated() %>% which()
 primers_n_samples$File_name[primers_n_samples$File_name %>% duplicated()]
 
-# conferir se há alguma combinação de tags repetida ----
+## Conferir se há alguma combinação de tags repetida ----
 select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% nrow()
 select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% unique() %>% nrow()
 select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% duplicated() %>% which()
 select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% duplicated() %>% which()
 primers_n_samples$File_name[select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% duplicated() %>% which()]
 
-#carregar sequências de primers sem Ns ----
+## carregar sequências de primers sem Ns ----
 primers_seqs <-  Biostrings::readDNAStringSet(filepath = "/home/gabriel/projetos/peixes-eDNA/analises/teste_08abr22/data/neo_miU_indexed_primers.fasta",format = "fasta")
 
 primers_seqs <- primers_seqs %>% 
@@ -178,13 +220,20 @@ primers_seqs <- primers_seqs %>%
 
 ### Demultiplexando com cutadapt
 
+O processo de demultiplex irá separar as *reads* de acordo com cada
+combinação de *primers* FWD e REV a partir da tabela fornecida no passo
+anterior. No final desta etapa, a pasta *raw* terá um par de arquivos R1
+e R2 para cada combinação de *primers*.
+
+**Referência**:
 <https://cutadapt.readthedocs.io/en/stable/guide.html#combinatorial-demultiplexing>
 
 ```{bash, eval=FALSE}
-#na edna com
+
+## Na edna com
 ulimit -n 1000000
 
-#combine file to demultiplex at once
+## Combine file to demultiplex at once
  cat $RAW_DATA/*22dez21*R1* > $RAW_DATA/LGC_run5_R1.fastq.gz
  cat $RAW_DATA/*22dez21*R2* > $RAW_DATA/LGC_run5_R2.fastq.gz
 
@@ -198,10 +247,9 @@ cutadapt -e 0.10 -j 79 --no-indels --max-n 0\
  /home/heron/runs/run5_22dez21/raw/LGC_run5_R2.fastq.gz \
  2> /home/heron/runs/run5_22dez21/eDNA_LGC_run5_cut_010_noNs.txt;
  
- #ls -lahSr /home/heron/runs/run5_22dez21/dmux_CDI/| grep -v " 0 Oct"
  ls -lahSr /home/heron/runs/run5_22dez21/dmux_CDI/| grep -v ;
 
-#remove empty files (don't, it will generate conflicts soon)
+## Remover arquivos vazios (don't, it will generate conflicts soon)
 find ~/runs/run_28out21/dmux_CDI$ \
  -size 0 \
  -delete;
@@ -212,6 +260,10 @@ find ~/runs/run_28out21/dmux_CDI$ \
 ## Preparação dos arquivos brutos para o DADA2
 
 ### Preparando os arquivos
+
+Os arquivos na pasta *raw* devem ser renomeados de acordo com sua
+amostra correspondente, informação que também está contida na tabela
+*primers_n\_samples*.
 
 ```{r, eval=FALSE,echo=TRUE}
 
@@ -300,7 +352,7 @@ for (sample in 1:nrow(sample_idx_tbl)) {
 }
 
 
-# Nomeando as reads com o nome das amostras ----
+## Nomeando as reads com o nome das amostras ----
 {
   names(sample_idx_tbl$FWD_R1) <- sample_idx_tbl$File_name
   names(sample_idx_tbl$FWD_R2) <- sample_idx_tbl$File_name
@@ -329,7 +381,6 @@ for (sample in 1:nrow(sample_idx_tbl)) {
 
 
 ## Conferindo os tamanhos dos vetores. Devem ter o mesmo tamanho ----
-
 length(reads_fnFs)
 length(reads_fnRs)
 length(reads_fnFs_paired)
@@ -337,7 +388,6 @@ length(reads_fnRs_paired)
 
 
 ## Conferindo os nomes dos vetores. Devem ter os mesmos nomes, neste caso, o nome das amostras ----
-
 names(reads_fnFs)
 names(reads_fnRs)
 names(reads_fnFs_paired)
@@ -346,20 +396,18 @@ names(reads_fnRs_paired)
 
 
 ## Verificar se cada arquivo com o mesmo índice possui o mesmo nome relacionado à amostra correspondente (1:24) ----
-
 reads_fnFs[20]
 reads_fnRs[20]
 reads_fnFs_paired[20]
 reads_fnRs_paired[20]
-
-
 ```
 
 ### Filtragem e o repareamento das reads com DADA2
 
 Etapa prévia de filtragem e repareamento das reads com o DADA2.
 
-O comando fastqPairedFilter do pacote DADA2 será utilizado a partir dos seguintes parâmetros:
+O comando **fastqPairedFilter()** do pacote DADA2 será utilizado a
+partir dos seguintes parâmetros:
 
 -   maxN = c(0,0): descarte das reads com N's
 
@@ -371,7 +419,8 @@ O comando fastqPairedFilter do pacote DADA2 será utilizado a partir dos seguint
 
 Outras flags:
 
--   'compress = True' irá determinar que os arquivos de saída serão .gzip
+-   'compress = True' irá determinar que os arquivos de saída serão
+    .gzip
 
 -   'verbose = TRUE' determina que mensagens de erro irão aparecer
 
@@ -395,7 +444,6 @@ for (lib in 1:length(reads_fnFs)) {
 
 
 ## Preste atenção aos avisos, eles irão indicar quais tags estão com reads vazias ou ausentes
-
 ```
 
 ### Definindo o nível das amostras
@@ -423,12 +471,14 @@ sample_levels <- c(
 "L4_nov21"
 )
 }
-
 ```
 
-## Trabalhando com as reads limpas
+## Trabalhando com as *reads* limpas
 
-Agora que as reads estão limpas e repareadas, podemos iniciar o workflow do DADA2. A primeira etapa é aprender as taxas de erro específicas por read, que irão orientar a dereplicação. A dereplicação é o processo de agrupar as ASVs como sequências únicas.
+Agora que as reads estão limpas e repareadas, podemos iniciar o
+*workflow* do DADA2. A primeira etapa é aprender as taxas de erro
+específicas por read, que irão orientar a dereplicação. A dereplicação é
+o processo de agrupar as ASVs como sequências únicas.
 
 ```{r, echo=TRUE, eval=FALSE}
 
@@ -461,13 +511,12 @@ run_errR <- learnErrors(c(sample_idx_tbl$FWD_R2_paired[file.exists(sample_idx_tb
                            sample_idx_tbl$REV_R2_paired[file.exists(sample_idx_tbl$REV_R2_paired)]),
                          multithread=TRUE,randomize = TRUE)
 }
-
-
 ```
 
 ### Dereplicação: agrupando as sequências em ASVs
 
-Nesta etapa cada bibilioteca é reduzida a suas sequências únicas e suas contagens.
+Nesta etapa cada bibilioteca é reduzida a suas sequências únicas e suas
+contagens.
 
 ```{r, eval=FALSE}
 
@@ -490,12 +539,14 @@ Nesta etapa cada bibilioteca é reduzida a suas sequências únicas e suas conta
   ## Reads REV, sequências R2
   LGC_run_derep_REV_R2 <- derepFastq(sample_idx_tbl$REV_R2_paired[file.exists(sample_idx_tbl$REV_R2_paired)], verbose=TRUE)
 }
-
 ```
 
 ### Inferência das amostras
 
-A função dada() recebe como entrada os sequências das *reads* dereplicadas e retorna a o conjunto de ASVs que representam as sequências biológicas reais. A inferência da composição de cada amostra é realizada a partir da remoção das sequências que possuem erro.
+A função **dada()** recebe como entrada os sequências das *reads*
+dereplicadas e retorna a o conjunto de ASVs que representam as
+sequências biológicas reais. A inferência da composição de cada amostra
+é realizada a partir da remoção das sequências que possuem erro.
 
 ```{r, eval=FALSE}
 
@@ -515,12 +566,14 @@ A função dada() recebe como entrada os sequências das *reads* dereplicadas e 
   ## REV R2
   LGC_run_REV_dadaR2 <- dada(LGC_run_derep_REV_R2, err=run_errR, multithread=TRUE)
 }
-
 ```
 
 ### Unindo as sequências em ASVs
 
-A função mergePairs realiza a união (merge) das *reads* R1 e R2 que compõe as fitas FWD e REV, rejeitando os pares que não possuem sobreposição suficiente de 20 bases (minOverlap = 20) ou que tenham mismatches (maxMismatch = 0). 
+A função **mergePairs()** realiza a união (merge) das *reads* R1 e R2
+que compõe as fitas FWD e REV, rejeitando os pares que não possuem
+sobreposição suficiente de 20 bases (minOverlap = 20) ou que tenham
+mismatches (maxMismatch = 0).
 
 ```{r, eval=FALSE}
 
@@ -560,12 +613,16 @@ LGC_run_REV_dadaR2
 
 length(run_mergers_FWD)
 length(run_mergers_REV)
-
 ```
 
-## Tabelas de abundâncias das ASVs (Sequence tables)
+## Tabelas de abundâncias das ASVs (*Sequence tables*)
 
-A função makeSequenceTable realiza a criação das Tabelas de abundâncias das ASVs (Sequence tables). Porém, como existem 2 conjuntos de ASVs, FWD e REV, suas Sequence tables devem ser unidas em uma só. Para tanto, iremos realizar uma função DADA2 customizada (<https://github.com/benjjneb/dada2/issues/132>).
+A função makeSequenceTable realiza a criação das Tabelas de abundâncias
+das ASVs (*Sequence tables*). Porém, como existem 2 conjuntos de ASVs,
+FWD e REV, suas Sequence tables devem ser unidas em uma só. Para tanto,
+iremos realizar uma função DADA2 customizada.
+
+**Referência**: <https://github.com/benjjneb/dada2/issues/132>
 
 ```{r, echo=TRUE, eval=FALSE}
 
@@ -690,34 +747,45 @@ sample_idx_tbl$File_name %>% unique()
 table(nchar(getSequences(run_seqtab_REV))) %>% plot()
 table(nchar(getSequences(run_seqtab_FWD))) %>% plot()
 table(nchar(getSequences(mergers_seqtab))) %>% plot()
-
 ```
 
-## Este trecho ainda não possui um título e uma explicação
+### Remoção de *Bimeras*
+
+A função **removeBimeraDenovo()** realiza a remoção de *bimeras* do
+conjunto de ASVs. *Bimeras* são *chimeras* que possuem cada extremidade
+relacionada a uma sequência parental distinta.
 
 ```{r, eval=FALSE}
-# 16 - remove chimeras ----
 
-mergers_seqtab.nochim <- removeBimeraDenovo(mergers_seqtab, method="consensus", multithread=TRUE, verbose=TRUE)  #minFoldParentOverAbundance??
-dim(mergers_seqtab.nochim)
-sum(mergers_seqtab.nochim)/sum(mergers_seqtab) # =  0.9567811 , perda de 4.4% na abundancia -> estes 4.4% são quimeras
-#count proportion of ASVs of a given length
+## Remoção de  chimeras ----
+mergers_seqtab.nochim <- removeBimeraDenovo(mergers_seqtab, method="consensus", multithread=TRUE, verbose=TRUE) ## Observar quantas bimeras foram identificadas nas sequências
+
+## Cálculo da % de bimeras na amostra
+{
+  dim(mergers_seqtab.nochim)
+ch_rat <- (sum(mergers_seqtab.nochim)/sum(mergers_seqtab)) 
+ch_por <- format(round(100 * (1 - ch_rat), digits = 2), nsmall = 2)
+sprintf("A porcentagem de bimeras é de %s%%", ch_por)
+}
+
+## Exibir a distribuição das ASVs por tamanho após remoção das bimeras
 table(nchar(getSequences(mergers_seqtab.nochim)))
 table(nchar(getSequences(mergers_seqtab.nochim))) %>% plot()
+
+## Verificar se alguma amostra foi removida
 rownames(mergers_seqtab.nochim)
 rownames(mergers_seqtab)
-
 ```
 
-### Count reads and remaining ASVs
+### Quantificação de *reads* e ASVs restantes
 
 ```{r, eval=FALSE}
-# 17 - count reads proportion throughout the pipeline ----
 
+## Quantificar a proporção de reads através do pipeline ----
+{
+  colnames(sample_idx_tbl)
 
-colnames(sample_idx_tbl_wide)
-
-sample_idx_tbl <- sample_idx_tbl_wide %>%
+sample_idx_tbl <- sample_idx_tbl %>%
   pivot_longer(cols = c(FWD_R1, FWD_R2, REV_R1, REV_R2,
                         FWD_R1_paired, FWD_R2_paired,
                         REV_R1_paired, REV_R2_paired),
@@ -725,11 +793,11 @@ sample_idx_tbl <- sample_idx_tbl_wide %>%
 
 
 sample_idx_tbl %>% colnames()
+}
 
 #preparing tables with named rows to combine later
 
-#counting reads in raw files
-
+## Contagem de reads nos arquivos brutos
 raw_reads <- sample_idx_tbl %>% filter(Stage %in% c("FWD_R1",
                                                     "FWD_R2",
                                                     "REV_R1",
@@ -948,7 +1016,6 @@ ggsave(file = paste0(figs_path,"/",prjct_rad,"track_samples.pdf"),
 
 
 track_tbl$`Full name` %>% unique()
-
 ```
 
 <!-- ![gráfico de reads](/home/gabriel/projetos/peixes-eDNA/analyses/LGC_run5_22dez21/results/figs/LGC_run5_22dez21track_samples.ng) -->
@@ -980,7 +1047,6 @@ mergers_sps <- dada2::assignSpecies(seqs = mergers_seqtab.nochim, allowMultiple 
 )
 
 View(mergers_sps)
-
 ```
 
 ```{r, eval=FALSE}
@@ -1005,7 +1071,6 @@ mergers_csv_taxa <- mergers_taxa$tax %>% as_tibble() %>% mutate(ASV = rownames(m
 View(mergers_csv_taxa)
 
 mergers_csv_taxa$Species %>%  unique()
-
 ```
 
 Here the **DADA2** pipeline ends.
@@ -1065,7 +1130,6 @@ mergers_ps <- phyloseq::phyloseq(phyloseq::otu_table(mergers_seqtab.nochim, taxa
 View(mergers_seqtab.nochim)
 View(samdf)
 View(mergers_taxa$tax)
-
 ```
 
 ### Merge and Flex Phyloseq results
@@ -1127,9 +1191,6 @@ all_ps_tbl$File_name <- factor(all_ps_tbl$File_name, levels = sample_levels)
 
 # all_ps_tbl <- left_join(by = "ASV",x=all_ps_tbl,y= mergers_csv_sp)
 all_ps_tbl <- left_join(by = "ASV",x=all_ps_tbl,y= all_csv_sp)
-
-
-
 ```
 
 # blast unidentified ASVs
@@ -1316,8 +1377,6 @@ colnames(all_ps_tbl_blast)
 
 #all_ps_tbl_blast_bckp <- all_ps_tbl_blast
 #all_ps_tbl_blast <- all_ps_tbl_blast_bckp
-
-
 ```
 
 \#calculate sample abundances ----
@@ -1336,8 +1395,9 @@ abd_total <- sum(all_ps_tbl_blast$Abundance)
 all_ps_tbl_blast <- all_ps_tbl_blast %>%
   dplyr::group_by(File_name,Read_origin) %>%        #now the abundance on sample is for merged/R1/R2 separetely
   mutate("Sample total abundance" = sum(Abundance),
-         "Relative abundance to all samples" = Abundance/abd_total*100,
-         "Relative abundance on sample" = Abundance/`Sample total abundance`*100) %>%
+         "Relative abundance to all samples" = Abundance/abd_total*100, ## exibir em porcentagem
+         "Relative abundance on sample" = Abundance/`Sample total abundance`*100) ## exibir em porcentagem
+%>%
   ungroup()
 
 paste0(colnames(all_ps_tbl_blast),"\n") %>%  cat()
@@ -1346,7 +1406,6 @@ paste0(colnames(all_ps_tbl_blast),"\n") %>%  cat()
 all_ps_tbl_blast %>% 
     # filter(Read_origin %in% c("merged")) %>% 
   select(c("Read_origin","File_name","Relative abundance on sample","Sample total abundance")) %>% View()
-
 ```
 
 # FINAL id
@@ -1393,8 +1452,6 @@ mutate(
 
 colnames(all_ps_tbl_blast)[colnames(all_ps_tbl_blast) == "ASV"] <- "ASV (Sequence)"
 names(all_ps_tbl_blast)[which(names(all_ps_tbl_blast)== "ASV length")] <- "ASV Size (pb)"
-
-
 ```
 
 ### ASVs seqs
@@ -1450,14 +1507,9 @@ all_asv_fasta <- c(rbind(all_asv_seqs$`ASV header`, all_asv_seqs$`ASV (Sequence)
 
 write(all_asv_fasta, paste0(results_path,"/",prjct_rad,"-all_ASVs_all_primers.fasta"))
 
-
-
-
-
 all_ps_tbl_blast$Abundance %>% table() %>%  plot()
 all_ps_tbl_blast$`Relative abundance on sample` %>% table() %>%  plot()
 all_ps_tbl_blast$`ASV Size (pb)` %>% table() %>%  plot()
-
 ```
 
 \#\#\#SWARM - ASVs to OTUs
@@ -1653,8 +1705,6 @@ all_ps_tbl_blast <-
 # paste0(colnames(all_ps_tbl_blast),"\n") %>%  cat()
 # names(all_ps_tbl_blast)[which(names(all_ps_tbl_blast)=="ASV")] <- "ASV (Sequence)"
 names(all_ps_tbl_blast)[which(names(all_ps_tbl_blast)== "ASV length")] <- "Size (pb)"
-
-
 ```
 
 \#Identify ASVs present on the Blanks/Negative controls
@@ -1777,11 +1827,6 @@ all_ps_tbl_blast <- bind_rows(eDNA_ps_tbl_blast, ichth_ps_tbl_blast)
 all_ps_tbl_blast$`ASV (Sequence)` %>%  unique()
 all_ps_tbl_blast$Sample %>%  table()
 all_ps_tbl_blast$Remove %>%  table()
-
-
-
-
-
 ```
 
 \#\#\#Salvando as tabelas completas
@@ -1857,12 +1902,6 @@ group_by(Type,Sample,`final ID`) %>%
 
 
 
-
-
-
-
-
-
 smp_abd_ID_summary <-  smp_abd_ID %>%  
   filter(Read_origin %in% c("R1")) %>% 
   # group_by(Sample) %>% 
@@ -1887,14 +1926,6 @@ smp_abd_ID %>%
             `Num ASVs identificadas pelo BLASTn` = length(unique(`ASV (Sequence)`[!is.na(`final ID`)]))) %>% View()
 
 
-
-
-
-
-
-
-
-
 writexl::write_xlsx(x = smp_abd_ID_summary,
                     path = paste0(results_path,"/",prjct_rad,"-summary_",Sys.Date(),".xlsx"),
                     col_names = TRUE,format_headers = TRUE)
@@ -1917,8 +1948,6 @@ smp_abd_ID %>%
   writexl::write_xlsx(
     path = paste0(results_path,"/",prjct_rad,"-primer_summary-",Sys.Date(),".xlsx"),
     col_names = TRUE,format_headers = TRUE)
-
-
 ```
 
 ```{r echo=FALSE,eval=FALSE}
@@ -1929,6 +1958,4 @@ smp_abd_ID %>%
 
 all_ps_tbl_blast <- all_ps_tbl_blast %>% mutate("Probable bacteria" = if_else((stringr::str_detect(string = all_ps_tbl_blast$`final ID`,
                             pattern = "ncultured|bacter|proka|16S rRNA amplicon fragment from a soil sample")), TRUE, FALSE))
-
-
 ```

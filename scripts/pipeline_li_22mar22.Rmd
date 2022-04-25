@@ -61,7 +61,7 @@ escrever um e-mail para
 
 # Preparação
 
-## Load *R libs* and system programs.
+## Carregar bibliotecas do R e programas do sistema
 
 ```{r, eval=FALSE,echo=TRUE}
 
@@ -161,8 +161,18 @@ mv /home/heron/runs/run5_22dez21/fastq/*/*fastq.gz $RAW_DATA;
 
 # Demultiplexando as amostras
 
- Cada biblioteca possui amostras que estão combinadas sob um mesmo índex Illumina. Agora iremos utilizar as sequências dos primers indexados para selecionais quais reads correspondem a cada amostra única. Já que o kit de preparação de bibliotecas utilizado (Collibri -ThermoFisher) resulta em amplicons sequenciados em ambas orientações, iremos partir do princípio que é possível encontrar os primers FWD e REV em qualquer conjunto de reads. Para que as próximas etapas ocorram adequadamente, deveremos fornecer um arquivo .csv correspondente aos metadados associados a todas amostras.
- Esta tabela deve obrigatoriamente conter três colunas, *File_name*, *Tag FWD*, *Tag REV*. Cada *amostra* deve corresponder a um valor único em *File_name* e a uma combinação única de *Tag FWD* e *Tag REV*.
+ Cada biblioteca possui amostras que estão combinadas sob um mesmo índex
+Illumina. Agora iremos utilizar as sequências dos primers indexados para
+selecionais quais reads correspondem a cada amostra única. Já que o kit
+de preparação de bibliotecas utilizado (Collibri -ThermoFisher) resulta
+em amplicons sequenciados em ambas orientações, iremos partir do
+princípio que é possível encontrar os primers FWD e REV em qualquer
+conjunto de reads. Para que as próximas etapas ocorram adequadamente,
+deveremos fornecer um arquivo .csv correspondente aos metadados
+associados a todas amostras.  Esta tabela deve obrigatoriamente conter
+três colunas, *File_name*, *Tag FWD*, *Tag REV*. Cada *amostra* deve
+corresponder a um valor único em *File_name* e a uma combinação única de
+*Tag FWD* e *Tag REV*.
 
 ## Regenerate index+primer
 
@@ -650,12 +660,12 @@ dim(mergers_seqtab)
 FWD_dadaFs_seqtab <- makeSequenceTable(samples = LGC_run_FWD_dadaFs)
 REV_dadaFs_seqtab <- makeSequenceTable(samples = LGC_run_REV_dadaFs)
 
-# colnames(REV_dadaFs_seqtab) <- dada2:::rc(colnames(REV_dadaFs_seqtab))
+colnames(REV_dadaFs_seqtab) <- dada2:::rc(colnames(REV_dadaFs_seqtab))
 
 FWD_dadaRs_seqtab <- makeSequenceTable(samples = LGC_run_FWD_dadaRs)
 REV_dadaRs_seqtab <- makeSequenceTable(samples = LGC_run_REV_dadaRs)
 
-# colnames(REV_dadaRs_seqtab) <- dada2:::rc(colnames(REV_dadaRs_seqtab))
+colnames(REV_dadaRs_seqtab) <- dada2:::rc(colnames(REV_dadaRs_seqtab))
 
 # R1_seqtab <- sumSequenceTables(table1 = FWD_dadaFs_seqtab,
 #                                table2 = REV_dadaFs_seqtab)
