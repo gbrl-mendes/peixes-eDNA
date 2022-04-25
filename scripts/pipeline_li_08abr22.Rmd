@@ -23,7 +23,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r load myData, include=FALSE}
-load(file = "/home/gabriel/projetos/peixes-eDNA/analises/li_22mar22/li_22mar22-env_2022-03-23_blast.RData")
+load(file = "/home/gabriel/projetos/peixes-eDNA/analises/pipeline-modelo/pipeline-modelo-env_2022-03-23_blast.RData")
 ```
 
 ## Introdução
@@ -91,7 +91,7 @@ cutadapt <- "/usr/local/bin/cutadapt"
 # 1 - Definindo o caminhos de saida e de entrada ----
 
 # usar o mesmo caminho que foi criado na variavel do bash $PRJCT_DIR
-analysis_path <- "/home/gabriel/projetos/peixes-eDNA/analises/teste_08abr22"
+analysis_path <- "/home/gabriel/projetos/peixes-eDNA/analises/pipeline-modelo"
 
 # criacao do data_folder
 data_path <- paste0(analysis_path,"/data")
@@ -114,7 +114,7 @@ swarm_path <- paste0(results_path,"/swarm")
 if(!dir.exists(swarm_path)) dir.create(swarm_path)
 
 #criacao do radical do nome do projeto
-prjct_rad <-c("teste_08abr22")
+prjct_rad <-c("pipeline-modelo")
 
 #garantir que as pastas estao vazias
 list.files(analysis_path)
@@ -191,7 +191,7 @@ sequenciada.
 ## Esta é a entrada mais importante da análise 
 ## Este input e o arquivo .sv com colunas com valores unicos: File_name, (combined) "Tag FWD-Tag REV"
 
-primers_n_samples <- readr::read_csv(file = "/home/gabriel/projetos/peixes-eDNA/analises/teste_08abr22/data/LI_primers_n_samples.csv")
+primers_n_samples <- readr::read_csv(file = "/home/gabriel/projetos/peixes-eDNA/analises/pipeline-modelo/data/LI_primers_n_samples.csv")
 
 
 ## Conferir se há algum nome de arquivo duplicado ----
@@ -208,7 +208,7 @@ select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-"
 primers_n_samples$File_name[select(primers_n_samples,c("Tag FWD","Tag REV")) %>% unite(col = "col",sep = "-") %>% duplicated() %>% which()]
 
 ## carregar sequências de primers sem Ns ----
-primers_seqs <-  Biostrings::readDNAStringSet(filepath = "/home/gabriel/projetos/peixes-eDNA/analises/teste_08abr22/data/neo_miU_indexed_primers.fasta",format = "fasta")
+primers_seqs <-  Biostrings::readDNAStringSet(filepath = "/home/gabriel/projetos/peixes-eDNA/analises/pipeline-modelo/data/neo_miU_indexed_primers.fasta",format = "fasta")
 
 primers_seqs <- primers_seqs %>% 
   as.data.frame() %>% 
@@ -338,16 +338,16 @@ dir.create(path = paste0(pipe_libs,"/paired"),showWarnings = TRUE)
 for (sample in 1:nrow(sample_idx_tbl)) {
 
   sample_idx_tbl$FWD_R1_paired[sample] <-
-    all_fnFs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name F`[sample]),x = all_fnFs)] %>% str_replace(pattern = "raw",replacement = "analises/li_22mar22/data/reads/paired")
+    all_fnFs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name F`[sample]),x = all_fnFs)] %>% str_replace(pattern = "raw",replacement = "analises/pipeline-modelo/data/reads/paired")
 
   sample_idx_tbl$FWD_R2_paired[sample] <-
-    all_fnRs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name F`[sample]),x = all_fnRs)] %>% str_replace(pattern = "raw",replacement = "analises/li_22mar22/data/reads/paired")
+    all_fnRs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name F`[sample]),x = all_fnRs)] %>% str_replace(pattern = "raw",replacement = "analises/pipeline-modelo/data/reads/paired")
 
   sample_idx_tbl$REV_R1_paired[sample] <-
-    all_fnFs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name R`[sample]),x = all_fnFs)] %>% str_replace(pattern = "raw",replacement = "analises/li_22mar22/data/reads/paired")
+    all_fnFs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name R`[sample]),x = all_fnFs)] %>% str_replace(pattern = "raw",replacement = "analises/pipeline-modelo/data/reads/paired")
 
   sample_idx_tbl$REV_R2_paired[sample] <-
-    all_fnRs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name R`[sample]),x = all_fnRs)] %>% str_replace(pattern = "raw",replacement = "analises/li_22mar22/data/reads/paired")
+    all_fnRs[grep(pattern =  paste0("/",sample_idx_tbl$`Lib name R`[sample]),x = all_fnRs)] %>% str_replace(pattern = "raw",replacement = "analises/pipeline-modelo/data/reads/paired")
 
 }
 
@@ -732,7 +732,7 @@ length(R1_seqtab) ## Reads sem realizar o merge
 length(R2_seqtab) ## Reads sem realizar o merge
 length(mergers_seqtab) # Seqtab após a soma das abundâncias de run_seqtab_FWD e run_seqtab_REV
 
-## ????
+## Checar a dimensão dos objetos
 dim(run_seqtab_REV)
 dim(run_seqtab_FWD)
 dim(all_seqtab)
@@ -795,24 +795,15 @@ sample_idx_tbl <- sample_idx_tbl %>%
 sample_idx_tbl %>% colnames()
 }
 
-#preparing tables with named rows to combine later
-
 ## Contagem de reads nos arquivos brutos
 raw_reads <- sample_idx_tbl %>% filter(Stage %in% c("FWD_R1",
                                                     "FWD_R2",
                                                     "REV_R1",
                                                     "REV_R2"))
 
-
-
-# 
 getN <- function(x) sum(getUniques(x))
 
-
-#preparing subtables with named rows to combine latter
-
-
-#raw files
+## Arquivos brutos
 
 names(sample_idx_tbl$`Read file`) <- sample_idx_tbl$File_name 
 
@@ -825,8 +816,7 @@ raw_reads_counts <- raw_reads_counts %>%
                                                          ),by = "Read file") %>% 
   select(!c( `Read file`,nucleotides,scores))
 
-
-# raw reads counts ----
+## Contagem de reads brutas ----
 tbl_raw_FWD_R1 <- raw_reads_counts[raw_reads_counts$Stage %in% c("FWD_R1"),] %>%
   select(`File_name`, records) %>%
   `colnames<-`(c("File_name", "Raw FWD_R1"))
@@ -845,33 +835,31 @@ tbl_raw_REV_R2 <- raw_reads_counts[raw_reads_counts$Stage %in% c("REV_R2"),] %>%
   `colnames<-`(c("File_name", "Raw REV_R2"))
 
 
-# # Generate tables for denoised reads
-#FWD
-tbl_Denoised_FWD_R1 <- (sapply(LGC_run_FWD_dadaFs, getN) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Denoised FWD_R1"))
+## Geração de tabelas para as reads limpas (denoised reads)
 
-tbl_Denoised_FWD_R2 <- (sapply(LGC_run_FWD_dadaRs, getN) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Denoised FWD_R2"))
+## FWD
+tbl_Denoised_FWD_R1 <- (sapply(LGC_run_FWD_dadaR1, getN) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Denoised FWD_R1"))
 
-#REV
-tbl_Denoised_REV_R1 <- (sapply(LGC_run_REV_dadaFs, getN) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Denoised REV_R1"))
+tbl_Denoised_FWD_R2 <- (sapply(LGC_run_FWD_dadaR2, getN) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Denoised FWD_R2"))
 
-tbl_Denoised_REV_R2 <- (sapply(LGC_run_REV_dadaRs, getN) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Denoised REV_R2"))
+## REV
+tbl_Denoised_REV_R1 <- (sapply(LGC_run_REV_dadaR1, getN) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Denoised REV_R1"))
 
+tbl_Denoised_REV_R2 <- (sapply(LGC_run_REV_dadaR2, getN) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Denoised REV_R2"))
 
+## Reads unidas FWD (merged reads)
 tbl_Merged_FWD <- (sapply(run_mergers_FWD, getN) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Merged FWD"))
 
+## Reads unidas REV (merged reads)
 tbl_Merged_REV <- (sapply(run_mergers_REV, getN) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Merged REV"))
-
-#TODO create optional step to use R1 and R2 alone
-# tbl_R1_R2_merged <- (rowSums(all_seqtab) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Merged FWD + Merged REV"))
-
 
 tbl_Merged <- (rowSums(mergers_seqtab) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Unique Merged"))
 
-
+## Sem as bimeras
 tbl_Non_chimeric <- (rowSums(mergers_seqtab.nochim) %>% as_tibble(rownames = "File_name")) %>% `colnames<-`(c("File_name", "Non-chimeric"))
 
 
-# combine all counts by sample to plot
+## Combinar todas as contagens em um mesmo plot
 
 all_track <- tbl_raw_FWD_R1 %>%
   left_join(tbl_raw_FWD_R2, by = "File_name") %>%
@@ -906,22 +894,19 @@ all_track <- all_track %>% select(c("File_name", "Primer",
                                     # "Non-chi_R2",
                                     "Non-chimeric"))
 
-
-
-
-
-#save counts table
+## Salvar tabelas de contagens
 
 writexl::write_xlsx(x = all_track,
                     path = paste0(results_path,"/",prjct_rad,"-reads_and_seqs_counts-",Sys.Date(),".xlsx"),
                     col_names = TRUE,format_headers = TRUE)
 
+track_tbl <- bind_rows(all_track) 
 
-# plot reads proportion troughout the pipeline ----
+## Plotar as proporções de reads ao longo do pipeline ----
 options(scipen = 5)
 
 
-#18 - set colors for downstream plots ----
+## Definir as cores dos próximos plots ----
 
 # colors 
 scales::show_col(viridis::viridis(n = 5))
@@ -930,11 +915,9 @@ scales::show_col(viridis::viridis(n = 5))
 inferno8 <- viridis::inferno(n = 8)
 turbo10 <- viridis::turbo(n = 10)
 
-
 colnames(track_tbl)
 
-
-# transform tibble to long format, better for ggplot
+## Transformar o objeto tibble para o formato longo, melhor para o ggplot2
   track_tbl <- track_tbl %>%
   gather(key = "Stage",
         value = "Read counts",
@@ -960,9 +943,8 @@ colnames(track_tbl)
                                           "Raw REV_R2","Raw REV_R1", "Raw FWD_R2","Raw FWD_R1"))) 
 
     options(scipen = 22)
-  
     
-#plot samples reads/abundances
+## Plotar a razão reads/abundância de cada amostra
     
   track_plot <- track_tbl %>% 
     mutate(File_name = factor(File_name, levels = sample_levels)) %>%
@@ -995,15 +977,6 @@ colnames(track_tbl)
 
 track_plot 
 
-# save plot
-# ggsave(file = paste0(figs_path,"/",prjct_rad,"track_samples.png"),
-#      plot = track_plot,
-#      device = "png",
-#      width = 45,
-#      height = 45,
-#      units = "cm",
-#      dpi = 600)
-
 ggsave(file = paste0(figs_path,"/",prjct_rad,"track_samples.pdf"),
      plot = track_plot,
      device = "pdf",
@@ -1020,18 +993,9 @@ track_tbl$`Full name` %>% unique()
 
 <!-- ![gráfico de reads](/home/gabriel/projetos/peixes-eDNA/analyses/LGC_run5_22dez21/results/figs/LGC_run5_22dez21track_samples.ng) -->
 
-### Classify taxonomy
+### Atribuição taxonômica
 
-On this step the ASVs identified by the **DADA2** pipeline, jointly for
-all libraries of each primer, are associated (or not) to any of the
-sequences on the Reference 12S Sequences Database. DADA2 has two
-strategies to identify taxa. The first, *assignSpecies*, identify
-perfect matches of the ASVs in the Reference Database. The second,
-*assignTaxonomy*, use a RDP Naive Bayesian Classifier algorithm (Wang,
-2007) with kmer size 8 and 100 bootstrap replicates to associate ASVs to
-the Reference Database Sequences. In the latter, the taxonomy ranks
-classification is proportional to the sequence similarity, although this
-relation is not yet clear to us.
+On this step the ASVs identified by the **DADA2** pipeline, jointly for all libraries of each primer, are associated (or not) to any of the sequences on the Reference 12S Sequences Database. DADA2 has two strategies to identify taxa. The first, *assignSpecies*, identify perfect matches of the ASVs in the Reference Database. The second, *assignTaxonomy*, use a RDP Naive Bayesian Classifier algorithm (Wang, 2007) with kmer size 8 and 100 bootstrap replicates to associate ASVs to the Reference Database Sequences. In the latter, the taxonomy ranks classification is proportional to the sequence similarity, although this relation is not yet clear to us.
 
 ```{r, eval=FALSE}
 
