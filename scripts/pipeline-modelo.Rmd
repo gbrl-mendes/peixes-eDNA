@@ -1783,9 +1783,6 @@ group_by(Type,Sample,`final ID`) %>%
 #   mutate(`Replicates` = max())
 
 
-
-
-
 smp_abd_ID_summary <-  smp_abd_ID %>%  
   filter(Read_origin %in% c("R1")) %>% 
   # group_by(Sample) %>% 
