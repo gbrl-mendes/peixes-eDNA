@@ -219,12 +219,13 @@ primers_seqs <- primers_seqs %>%
 
 ```
 
-### Demultiplexando com cutadapt
+### Cutadapt
 
-O processo de demultiplex irá separar as *reads* de acordo com cada
-combinação de *primers* FWD e REV a partir da tabela fornecida no passo
-anterior. No final desta etapa, a pasta *raw* terá um par de arquivos R1
-e R2 para cada combinação de *primers*.
+Iremos utilizar o pacote **Cutadapt** para realizar o demultiplex. Esse
+processo irá separar as *reads* de acordo com cada combinação de
+*primers* FWD e REV a partir da tabela fornecida no passo anterior. No
+final desta etapa, a pasta *raw* terá um par de arquivos R1 e R2 para
+cada combinação de *primers*.
 
 **Referência**:
 <https://cutadapt.readthedocs.io/en/stable/guide.html#combinatorial-demultiplexing>
@@ -403,6 +404,8 @@ reads_fnFs_paired[20]
 reads_fnRs_paired[20]
 ```
 
+## DADA2
+
 ### Filtragem e o repareamento das reads com DADA2
 
 Etapa prévia de filtragem e repareamento das reads com o **DADA2**.
@@ -474,7 +477,7 @@ sample_levels <- c(
 }
 ```
 
-## Trabalhando com as *reads* limpas
+### Trabalhando com as *reads* limpas
 
 Agora que as reads estão limpas e repareadas, podemos iniciar o
 *workflow* do **DADA2**. A primeira etapa é aprender as taxas de erro
@@ -616,7 +619,7 @@ length(run_mergers_FWD)
 length(run_mergers_REV)
 ```
 
-## Tabelas de abundâncias das ASVs (*Sequence tables*)
+### Tabelas de abundâncias das ASVs (*Sequence tables*)
 
 A função makeSequenceTable realiza a criação das Tabelas de abundâncias
 das ASVs (*Sequence tables*). Porém, como existem 2 conjuntos de ASVs,
@@ -1143,7 +1146,12 @@ all_ps_tbl$File_name <- factor(all_ps_tbl$File_name, levels = sample_levels)
 all_ps_tbl <- left_join(by = "ASV",x=all_ps_tbl,y= all_csv_sp)
 ```
 
-# blast unidentified ASVs
+## BLAST
+
+### Uso do BLAST para identificar as ASVs restantes
+
+O **Blast** pode ser usado para classificar as ASVs que não foram
+identificadas pelo **DADA2**
 
 ```{r, eval=FALSE}
 # blastn ----
@@ -1329,7 +1337,7 @@ colnames(all_ps_tbl_blast)
 #all_ps_tbl_blast <- all_ps_tbl_blast_bckp
 ```
 
-\#calculate sample abundances ----
+### Cálculo das abundâncias
 
 ```{r, eval=FALSE, echo=TRUE}
 
@@ -1358,7 +1366,7 @@ all_ps_tbl_blast %>%
   select(c("Read_origin","File_name","Relative abundance on sample","Sample total abundance")) %>% View()
 ```
 
-# FINAL id
+## FINAL id
 
 ```{r,echo=TRUE, eval=FALSE}
 
@@ -1462,7 +1470,7 @@ all_ps_tbl_blast$`Relative abundance on sample` %>% table() %>%  plot()
 all_ps_tbl_blast$`ASV Size (pb)` %>% table() %>%  plot()
 ```
 
-\#\#\#SWARM - ASVs to OTUs
+## SWARM
 
 ```{r,echo=TRUE, eval=FALSE}
 
@@ -1551,7 +1559,7 @@ all_ps_tbl_blast %>% select(`final ID`,OTU) %>% select(OTU) %>% unique()
 all_ps_tbl_blast %>% select(`ASV (Sequence)`,`final ID`,OTU) %>% unique() 
 ```
 
-\#Reorder table
+### Reorganizar a tabela
 
 ```{r, eval=FALSE}
 
@@ -1587,12 +1595,9 @@ all_ps_tbl_blast <-
 names(all_ps_tbl_blast)[which(names(all_ps_tbl_blast)== "ASV length")] <- "Size (pb)"
 ```
 
-\#Identify ASVs present on the Blanks/Negative controls
+### Identificação das ASVs presentes no controles Brancos/Negativos
 
 ```{r,echo=TRUE, eval=FALSE}
-
-
-
 
 all_ps_tbl_blast <- all_ps_tbl_blast %>% mutate("Remove" = "Samples only")
 
@@ -1606,9 +1611,6 @@ all_ps_tbl_blast$Type %>% unique()
 all_ps_tbl_blast %>% 
   group_by(Group) %>% 
   mutate()
-
-
-
 
 # split data into two libraries ----
 eDNA_ps_tbl_blast <-all_ps_tbl_blast[all_ps_tbl_blast$Group %in% c("eDNA"),]
@@ -1709,7 +1711,9 @@ all_ps_tbl_blast$Sample %>%  table()
 all_ps_tbl_blast$Remove %>%  table()
 ```
 
-\#\#\#Salvando as tabelas completas
+## Resultados
+
+### Salvando as tabelas completas
 
 ```{r,echo=TRUE, eval=FALSE}
 
