@@ -1,7 +1,7 @@
 ---
 title: "eDNA-LGC Metagenomics Pipeline"
 author: "Hilário, OH; Mendes, GA"
-date: "22/03/2022"
+date: "abril/2022"
 output:
   html_document:  
     code_download: yes
@@ -1146,36 +1146,25 @@ all_ps_tbl <- left_join(by = "ASV",x=all_ps_tbl,y= all_csv_sp)
 
 ## BLAST
 
-### Uso do BLAST para identificar as ASVs restantes
+### Uso do BLASTn para identificar as ASVs restantes
 
-O **Blast** é usado para classificar as ASVs que não foram identificadas
-pelo **DADA2**
+O **BLASTn** é usado para classificar as ASVs que não foram
+identificadas pelo **DADA2** a partir do nosso Banco de Sequências 12S
+rDNA. O **BLASTn** utiliza um banco de dados chamado **GenBank**, que
+contém milhões de sequências de DNA anotadas e disponibilizadas
+publicamente.
+
+### 1. Preparação
 
 ```{r, eval=FALSE}
-# blastn ----
-# Annotate all ASVs by blastN
-
 
 asvs_blast <- all_ps_tbl$ASV %>% unique() %>% as.character()
-# %>% as.list()
-
 
 class(asvs_blast)
-# asvs_blast<- all_ps_tbl[c("ASV","ASV header")] %>% unique()
 
-# asvs_blast<- paste0(asvs_blast$`ASV header`,"\n",asvs_blast$ASV)
-
-#
-# asvs_blast %>% mutate(
-#   "subject" = "subject",
-#
-# )
-
-
-# load blast functions ----
+## Carregar funções do BLASTn ----
 {
-
-####### Lucio RQ - Execute shell commands #######
+## Execução de comandos SHELL (Ref. Lucio RQ)
 shell_exec <- function(cmd, .envir = parent.frame()) {
   if (!requireNamespace("processx", quietly = TRUE)) {
     rlang::abort(message = "Package `processx` package is not installed.")
@@ -1186,18 +1175,20 @@ shell_exec <- function(cmd, .envir = parent.frame()) {
   )
   return(cmd_res)
 }
-########################
 
-######### function to get fasta names from db based on subjectIDs #############
+## Função para obter os nomes FASTA a partir do Banco de Sequências baseado nos subjectIDs
 get_fasta_header <- function(id, db_path = "/data/databases/nt/nt") {
-  # id <- "JQ365494.1"
   command <- "blastdbcmd -db {db_path} -entry {id} -outfmt %t"
   result <- shell_exec(cmd = command)
   return(result$stdout)
 }
-################################################################################
+```
 
-#################### function to run blast for each ASV/ASV ####################
+### 2. BLASTn para cada ASV
+
+```{r, eval=FALSE, echo=TRUE}
+
+## Função para realizar o BLASTn para cada ASV 
 run_blastn <- function(asv, db_path = "/data/databases/nt/nt", num_alignments = 3, num_thread = 40) {
   # blast_cmd <- "echo -e '>seq1\n{asv}' | blastn -db {db_path} -outfmt 6 -perc_identity 95 -qcov_hsp_perc 95 -num_threads {as.character(num_thread)} -num_alignments {as.character(num_alignments)}"
   # blast_cmd <- "echo -e '>seq1\n{asv}' | blastn -db {db_path} -outfmt 6 -max_hsps 1 -perc_identity 95 -qcov_hsp_perc 95 -num_threads {as.character(num_thread)} -num_alignments {as.character(num_alignments)}"
@@ -1246,7 +1237,7 @@ get_blastn_results <- function(asv, num_thread = 40) {
 }
 
 # Versões paralelas
-cores_to_be_used <- future::availableCores() - 2 # Usar todos os cores -2 = 78
+cores_to_be_used <- future::availableCores() - 20 # Usar todos os cores -2 = 78 ## ALTERAR ISSO AQUI DEPOIS DE VER COMO FUNCIONA, O ORIGINAL ERA 2
 
 cores_to_be_used
 
@@ -1255,39 +1246,28 @@ future::plan(future::multisession(workers = cores_to_be_used))
 
 blast_res <- furrr::future_map_dfr(asvs_blast, get_blastn_results, num_thread = 1, .options = furrr::furrr_options(seed = NULL))
 
+```
 
-#save blast res to file ----
+### 3. Resultados
+
+```{r, eval=FALSE, echo=TRUE}
+
+## Salvando os resultados do BLASTn em um arquivo ----
 readr::write_csv(blast_res, paste0(results_path,"asv_blastn_res_3hits_",Sys.Date(),".csv"),append = FALSE)
 
-
 base::save.image(paste0(analysis_path,"/",prjct_rad,"-env_",Sys.Date(),"_blast.RData"))
-
-# blast_res_bckp <- blast_res
-# blast_res <- blast_res_bckp
 
 nrow(blast_res)
 dim(blast_res)
 
-
-# blast_res <- blast_res[,c(1:43)]  # ASV:`3_bitscore`      muito estranho, foi pra 155 colunas
-#
-# colnames(blast_res[,c(44:155)])
-
-
 blast_res <- blast_res %>%  filter(`1_res` == 1 ) #remover o que não deu nada
-
-#   is.na(blast_res[2:155])
 
 str(blast_res)
 
 class(asvs_blast)
 
-# all_ps_tbl$ASV <-   all_ps_tbl$ASV %>% as.character()
-
-#juntar tabela de ASVS e blastn IDs
-
+## Unir a tabela de ASVs com as IDs atribuídas pelo BLASTn
 all_ps_tbl_blast <- left_join(x = all_ps_tbl,y = blast_res,by = "ASV")
-
 
 all_ps_tbl_blast <- all_ps_tbl_blast %>% 
   mutate(File_name = factor(File_name,levels = sample_levels),
@@ -1324,18 +1304,10 @@ all_ps_tbl_blast <- all_ps_tbl_blast %>%
          # `exact Species` = factor(`exact Species`)
          )
 
-
-#patching controls, wont be needed next run
-
-
-
 colnames(all_ps_tbl_blast)
-
-#all_ps_tbl_blast_bckp <- all_ps_tbl_blast
-#all_ps_tbl_blast <- all_ps_tbl_blast_bckp
 ```
 
-### Cálculo das abundâncias
+### 4. Cálculo das abundâncias
 
 ```{r, eval=FALSE, echo=TRUE}
 
@@ -1357,7 +1329,6 @@ all_ps_tbl_blast <- all_ps_tbl_blast %>%
   ungroup()
 
 paste0(colnames(all_ps_tbl_blast),"\n") %>%  cat()
-
 
 all_ps_tbl_blast %>% 
     # filter(Read_origin %in% c("merged")) %>% 
@@ -1405,7 +1376,6 @@ mutate(
   `final ID` = factor(`final ID`)
   )
 
-
 colnames(all_ps_tbl_blast)[colnames(all_ps_tbl_blast) == "ASV"] <- "ASV (Sequence)"
 names(all_ps_tbl_blast)[which(names(all_ps_tbl_blast)== "ASV length")] <- "ASV Size (pb)"
 ```
@@ -1414,8 +1384,6 @@ names(all_ps_tbl_blast)[which(names(all_ps_tbl_blast)== "ASV length")] <- "ASV S
 
 ```{r,echo=TRUE, eval=FALSE}
 #25 - recover all ASVs sequences to prepare fasta ----
-
-
 
 #all ----
 # giving our seq headers more manageable names (ASV_1, ASV_2...)
@@ -1841,7 +1809,7 @@ all_ps_tbl_blast <- all_ps_tbl_blast %>% mutate("Probable bacteria" = if_else((s
 
 ### Plots
 
-```{r echo=FALSE,eval=FALSE}
+```{r echo=TRUE,eval=FALSE}
 ## Obtencao dos dados
 {
   raw_results_tbl <- read.csv("~/projetos/lagoa_ingleses/tabelas/raw/08mar22/v3_ed_li_22mar22-todas_info_da_analise_2022-04-08.csv",
