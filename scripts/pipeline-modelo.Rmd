@@ -23,16 +23,39 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r load myData, include=FALSE}
-load(file = "/home/gabriel/projetos/peixes-eDNA/analises/pipeline-modelo/pipeline-modelo-env_2022-03-23_blast.RData")
+load(file = "/home/gabriel/projetos/peixes-eDNA/analises/pipeline-modelo/pipeline-modelo/environment_pipeline-modelo.RData")
 ```
 
 ## Introdução
 
-Este *pipeline* foi desenvolvido pelo Dr. Heron Hilário e comentado e adaptado pelo aluno de mestrado Gabriel Antônio Mendes. Seu desenvolvimento ocorreu sob orientação do Professor Dr. Daniel de Cardoso Carvalho no Laboratório de Genética da Conservação da Pontífice Universidade Católica de Minas Gerais, Brasil (LGC PUC-MG). Este código possui como objetivo principal realizar a identificação taxonômica de amplicons gerados a partir do material genético extraído de amostras ambientais, como água ou solo. Ele foi desenvolvido tendo em seu núcleo o uso do pacote dada2, que utiliza do algorítmo DADA2 para inferir as sequências exatas das variantes de amplicons (ASVs), a partir de dados HTS *(High Throughput Sequencig)* gerados por sequenciamentos Illumina. 
+Este *pipeline* foi desenvolvido pelo Dr. Heron Hilário e comentado e
+adaptado pelo aluno de mestrado Gabriel Antônio Mendes. Seu
+desenvolvimento ocorreu sob orientação do Professor Dr. Daniel de
+Cardoso Carvalho no Laboratório de Genética da Conservação da Pontífice
+Universidade Católica de Minas Gerais, Brasil (LGC PUC-MG). Este código
+possui como objetivo principal realizar a identificação taxonômica de
+amplicons gerados a partir do material genético extraído de amostras
+ambientais, como água ou solo. Ele foi desenvolvido tendo em seu núcleo
+o uso do pacote dada2, que utiliza do algorítmo **DADA2** para inferir
+as sequências exatas das variantes de amplicons (ASVs), a partir de
+dados HTS *(High Throughput Sequencig)* gerados por sequenciamentos
+Illumina.
 
-Para a realização da inferência taxonômica das ASVs utilizamos de referência um banco de dados próprio, o db12SLGC, onde estão depositadas as sequências do gene rRNA mitocondrial 12S das espécies de peixes das bacias dos Rio Jequitinhonha e São Francisco. O DADA2 pode não ser suficiente para realizar a atribuição taxonômica de todos os amplicons gerados, e por isso também foi implementado no *pipeline* a identificação a partir do BLAST, realizada simultaneamente. Atualmente, sabe-se que uma abordagem que utilize apenas a inferência da sequência exata das ASVs não é suficiente para realizar a identificação adequada. Por isso, o *eDNA-LGC Metagenomics Pipeline* utiliza também o SWARM para a realização da inferência de OTUs.
+Para a realização da inferência taxonômica das ASVs utilizamos de
+referência um banco de dados próprio, o db12SLGC, onde estão depositadas
+as sequências do gene rRNA mitocondrial 12S das espécies de peixes das
+bacias dos Rio Jequitinhonha e São Francisco. O **DADA2** pode não ser
+suficiente para realizar a atribuição taxonômica de todos os amplicons
+gerados, e por isso também foi implementado no *pipeline* a
+identificação a partir do BLAST, realizada simultaneamente. Atualmente,
+sabe-se que uma abordagem que utilize apenas a inferência da sequência
+exata das ASVs não é suficiente para realizar a identificação adequada.
+Por isso, o *eDNA-LGC Metagenomics Pipeline* utiliza também o SWARM para
+a realização da inferência de OTUs.
 
-Se você tem alguma dúvida ou sugestão, por favor sinta-se à vontade para escrever um e-mailpara [lgc.edna\@gmail.com](mailto:lgc.edna@gmail.com){.email}
+Se você tem alguma dúvida ou sugestão, por favor sinta-se à vontade para
+escrever um e-mailpara
+[lgc.edna\@gmail.com](mailto:lgc.edna@gmail.com){.email}
 
 ## Preparação
 
@@ -382,9 +405,9 @@ reads_fnRs_paired[20]
 
 ### Filtragem e o repareamento das reads com DADA2
 
-Etapa prévia de filtragem e repareamento das reads com o DADA2.
+Etapa prévia de filtragem e repareamento das reads com o **DADA2**.
 
-O comando **fastqPairedFilter()** do pacote DADA2 será utilizado a
+O comando **fastqPairedFilter()** do pacote **DADA2** será utilizado a
 partir dos seguintes parâmetros:
 
 -   maxN = c(0,0): descarte das reads com N's
@@ -454,7 +477,7 @@ sample_levels <- c(
 ## Trabalhando com as *reads* limpas
 
 Agora que as reads estão limpas e repareadas, podemos iniciar o
-*workflow* do DADA2. A primeira etapa é aprender as taxas de erro
+*workflow* do **DADA2**. A primeira etapa é aprender as taxas de erro
 específicas por read, que irão orientar a dereplicação. A dereplicação é
 o processo de agrupar as ASVs como sequências únicas.
 
@@ -598,7 +621,7 @@ length(run_mergers_REV)
 A função makeSequenceTable realiza a criação das Tabelas de abundâncias
 das ASVs (*Sequence tables*). Porém, como existem 2 conjuntos de ASVs,
 FWD e REV, suas Sequence tables devem ser unidas em uma só. Para tanto,
-iremos realizar uma função DADA2 customizada.
+iremos realizar uma função **DADA2** customizada.
 
 **Referência**: <https://github.com/benjjneb/dada2/issues/132>
 
@@ -782,7 +805,6 @@ raw_reads <- sample_idx_tbl %>% filter(Stage %in% c("FWD_R1",
 getN <- function(x) sum(getUniques(x))
 
 ## Arquivos brutos
-
 names(sample_idx_tbl$`Read file`) <- sample_idx_tbl$File_name 
 
 raw_reads <- sample_idx_tbl %>% filter(Stage %in% c("FWD_R1","FWD_R2","REV_R1","REV_R2")) 
@@ -838,7 +860,6 @@ tbl_Non_chimeric <- (rowSums(mergers_seqtab.nochim) %>% as_tibble(rownames = "Fi
 
 
 ## Combinar todas as contagens em um mesmo plot
-
 all_track <- tbl_raw_FWD_R1 %>%
   left_join(tbl_raw_FWD_R2, by = "File_name") %>%
   left_join(tbl_raw_REV_R1, by = "File_name") %>%
@@ -886,7 +907,7 @@ options(scipen = 5)
 
 ## Definir as cores dos próximos plots ----
 
-# colors 
+## colors 
 scales::show_col(viridis::viridis(n = 5))
 scales::show_col(viridis::viridis(n = 5))
 # inferno5 <- viridis::inferno(n = 10)[5:9]
@@ -923,8 +944,7 @@ colnames(track_tbl)
     options(scipen = 22)
     
 ## Plotar a razão reads/abundância de cada amostra
-    
-  track_plot <- track_tbl %>% 
+      track_plot <- track_tbl %>% 
     mutate(File_name = factor(File_name, levels = sample_levels)) %>%
       ggplot(aes(y = Stage,x = `Read counts`, 
                  fill = Stage,
@@ -964,73 +984,89 @@ ggsave(file = paste0(figs_path,"/",prjct_rad,"track_samples.pdf"),
      dpi = 600)
 
 
-
-
 track_tbl$`Full name` %>% unique()
+
+## O gráfico com a contagem de reads em cada etapa está disponível em: 
+## /home/gabriel/projetos/peixes-eDNA/pipeline-modelo/results/figs/
 ```
 
-<!-- ![gráfico de reads](/home/gabriel/projetos/peixes-eDNA/analyses/LGC_run5_22dez21/results/figs/LGC_run5_22dez21track_samples.ng) -->
+## Classificação taxonômica das ASVs
 
-### Atribuição taxonômica
+Nesta etapa as ASVs identificadas pelo **DADA2**, juntamente com todas
+as bibliotecas de cada primers, serão associados (ou não) às sequências
+do 12S Sequences Database. O **DADA2** possui duas estratégias para
+realizar a identificação das ASVs: em primeiro lugar,
+**assingSpecies()** irá identificar as correspondências perfeitas entre
+os *amplicons* e as sequências do 12S DataBase. A segunda abordagem,
+**assignTaxonomy()**, irá usar um algorítmo Bayesiano Classificador
+Ingênuo (NBC) RDP (Wang, 2007) com replicatas de *k-mers* tamanho 8 e
+*bootstrap* de 100 para associar as ASVs às sequências do banco de
+referências. Nesta abordagem, a classificação taxonômica é proporcional
+à similaridade das sequências.
 
-On this step the ASVs identified by the **DADA2** pipeline, jointly for all libraries of each primer, are associated (or not) to any of the sequences on the Reference 12S Sequences Database. DADA2 has two strategies to identify taxa. The first, *assignSpecies*, identify perfect matches of the ASVs in the Reference Database. The second, *assignTaxonomy*, use a RDP Naive Bayesian Classifier algorithm (Wang, 2007) with kmer size 8 and 100 bootstrap replicates to associate ASVs to the Reference Database Sequences. In the latter, the taxonomy ranks classification is proportional to the sequence similarity, although this relation is not yet clear to us.
+[**Atenção!** Prestar atenção à versão do Banco de Sequências de
+referência]{.ul}
+
+### Classificação taxonômica exata
 
 ```{r, eval=FALSE}
 
-#19 - classify taxonomy exactly ----
-
+## Classificação taxonômica exata das ASVs ----
 mergers_sps <- dada2::assignSpecies(seqs = mergers_seqtab.nochim, allowMultiple = 10,
-                                refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_SPs_dez21.fasta",
+                                refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/fev22/DB/LGC12Sdb-fev22-dada_SPs_fullDB_order.fasta",
                                 tryRC=TRUE,
                                 n = 20000,
-                                verbose = TRUE)
+                                verbose = TRUE) 
+## Atenção! Observar quantas ASVs foram identificadas ao nível de espécie!
 
   
 )
 
+## Vizualizar a tabela contendo as ASVs identificadas ao nível de espécie e sua classificação taxonômica
 View(mergers_sps)
-```
-
-```{r, eval=FALSE}
-## Classify taxonomy ----
-mergers_taxa <- dada2::assignTaxonomy(seqs = mergers_seqtab.nochim,
-                                  refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/dez21/dada_tax_fullDB_order_dez21.fasta",
-                                  multithread=TRUE, tryRC=TRUE,taxLevels = c("Kingdom","Phylum","Class","Order","Family", "Genus", "Species","Specimen","Basin"),
-                           outputBootstraps = TRUE, verbose = TRUE )
-
 
 mergers_csv_sp <- mergers_sps %>% as_tibble() %>% mutate(OTU = rownames(mergers_sps))
 
 all_csv_sp <- bind_rows(mergers_csv_sp)
 
+## Tabela final da classificação exata
+View(all_csv_sp)
+```
+
+### Classificação taxonômica NBC RDP
+
+```{r, eval=FALSE}
+
+## Classificação taxonômica NBC RDP ----
+mergers_taxa <- dada2::assignTaxonomy(seqs = mergers_seqtab.nochim,
+                                  refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/fev22/DB/LGC12Sdb-fev22-dada_tax_fullDB_order.fasta",
+                                  multithread=TRUE, tryRC=TRUE,taxLevels = c("Kingdom","Phylum","Class","Order","Family", "Genus", "Species","Specimen","Basin"),
+                           outputBootstraps = TRUE, verbose = TRUE )
 
 colnames(all_csv_sp) <- c("exact Genus", "exact Species", "ASV")
 
 
 mergers_csv_taxa <- mergers_taxa$tax %>% as_tibble() %>% mutate(ASV = rownames(mergers_taxa))
 
-
+## Tabela fial da classificação taxonômica com o algorítmo NBC RDP
 View(mergers_csv_taxa)
 
-mergers_csv_taxa$Species %>%  unique()
+mergers_csv_taxa$Species %>% unique()
 ```
 
-Here the **DADA2** pipeline ends.
+## Phyloseq
 
-\#\# Phyloseq
+Nesta etapa as ASVs associadas às suas respectivas classificações
+taxonômicas atribuídas pelo **DADA2** e suas respectivas contagens por
+amostra serão combinadas usando o pacote **Phyloseq**.
 
-On this step the ASVs associated to taxonomic ranks by **DADA2** and
-their respective counts by library, are combined using the **Phyloseq**
-package.
+### Gerando a tabela de metadados por amostra
 
-\#\#\# Generate sample metadata table
-
-Here the experiment metadata is associated to each sample.
+Aqui, os metadados dos experimentos serão associados a cada amostra.
 
 ```{r, eval=FALSE}
-# 22 - create sample table ----
 
-
+## Criação da tabela de amostras ----
 colnames(primers_n_samples)
 colnames(primers_n_samples) %>% paste0(collapse = '",\n"') %>% cat
 unique(sample_idx_tbl)
@@ -1056,15 +1092,20 @@ samdf <- samdf %>% as.data.frame()
   rownames(samdf) <- samdf$File_name
 ```
 
-This sample metadata table must be customized for each experiment.
+A tabela de metadados das amostras deve ser customizada para cada
+experimento.
 
-### **Phyloseq** data interpretation
+### Interpretação dos dados no Phyloseq
+
+O Phyloseq é utilizado para reunir em um mesmo objeto os datasets
+otu_table, sample_data e tax_table. Ele gera um objeto (neste caso o
+mergers_ps) que é de dificil manipulacao, e por isso depois ele sera
+'derretido' em um objeto mais manipulavel. Este pacote foi incluido no
+pipeline por já ser usado associado com o dada2
 
 ```{r, eval=FALSE}
-#23 - interpret dada on phyloseq ----
 
-#o Phyloseq é utilizado para reunir em um mesmo objeto os datasets otu_table, sample_data e tax_table. Ele gera um objeto (neste caso o mergers_ps) que é de dificil manipulacao, e por isso depois ele sera 'derretido' em um objeto mais manipulavel. Ele foi incluido no pipeline por ja ser usado associado com o dada2 
-
+## Interpretação de dados no Phyloseq ----
 mergers_ps <- phyloseq::phyloseq(phyloseq::otu_table(mergers_seqtab.nochim, taxa_are_rows = FALSE),
                                  phyloseq::sample_data(samdf),
                                  phyloseq::tax_table(mergers_taxa$tax))
@@ -1076,62 +1117,29 @@ View(mergers_taxa$tax)
 
 ### Merge and Flex Phyloseq results
 
-Many different graphics can be generated, together or in isolation, for
-all primers/libraries and taxonomic ranks.
+Diferentes gráficos podem ser gerados, juntos ou separados, para todos
+os primers/bibliotecas e níveis taxonômicos
 
 ```{r, eval=FALSE}
 
-#TODO terminar de implementar a analise de cada read separada
-#melt phyloseq object into tbl
-mergers_ps_tbl <- psmelt(mergers_ps) %>% as_tibble() %>% mutate(Read_origin = "merged") %>%  filter(Abundance >=1)
+## "Derretendo" o objeto phyloseq em uma tabela
+mergers_ps_tbl <- psmelt(mergers_ps) %>% as_tibble() %>% mutate(Read_origin = "merged") %>%  
+  filter(Abundance >=1)
+  mergers_ps_tbl$OTU %>% unique() %>% length()
+  R1_ps_tbl$OTU %>% unique() %>% length()
+  R2_ps_tbl$OTU %>% unique() %>% length()
 
-
-        mergers_ps_tbl$OTU %>% unique() %>% length()
-        R1_ps_tbl$OTU %>% unique() %>% length()
-        R2_ps_tbl$OTU %>% unique() %>% length()
-
-
-#combine ps tables from all ASVs inputs
-# all_ps_tbl <- bind_rows(R1_ps_tbl, R2_ps_tbl,mergers_ps_tbl)
-all_ps_tbl <- bind_rows(mergers_ps_tbl)
-# %>% unique()
-
-
+## Combinando todas tabelas ps de todas entradas de ASVs
+{
+ all_ps_tbl <- bind_rows(mergers_ps_tbl)
 all_ps_tbl$OTU %>% unique() %>% length()
-
-
-#remove ASVs with abundance = 0
-# all_ps_tbl <- all_ps_tbl %>%
-#   filter(`Abundance` > 0)
-
-
-
 colnames(all_ps_tbl)[colnames(all_ps_tbl) == "OTU"] <- "ASV"
-
-
 unique(all_ps_tbl$ASV)
-# unique(neo_ps_tbl$ASV)
-# unique(mif_ps_tbl$ASV)
-
-
 all_ps_tbl$File_name %>%  unique()
-# all_ps_tbl$Primer %>%  unique()
-
-
-
-
-# all_ps_tbl$Full.name <- factor(all_ps_tbl$Full.name, levels = sample_levels)
 all_ps_tbl$File_name <- factor(all_ps_tbl$File_name, levels = sample_levels)
-      # all_ps_tbl$Primer <- factor(all_ps_tbl$Primer)
-      # all_ps_tbl$Point <- factor(all_ps_tbl$Point, levels = c("IR10", "IR2", "IR3", "Tur", "Cneg_ext", "Cneg_PCR"))
-      # all_ps_tbl$Depth <- factor(all_ps_tbl$Depth, levels = c("0", "10", "20", "50", "-"))
+}
 
-
-
-#concatenate exact species table
-
-
-# all_ps_tbl <- left_join(by = "ASV",x=all_ps_tbl,y= mergers_csv_sp)
+## Concatenando a tabela de identificações exatas
 all_ps_tbl <- left_join(by = "ASV",x=all_ps_tbl,y= all_csv_sp)
 ```
 
@@ -1554,92 +1562,22 @@ all_ps_tbl_blast %>% select(`ASV (Sequence)`,`final ID`,OTU) %>% unique()
 
 all_ps_tbl_blast <-
   all_ps_tbl_blast %>%
-  select(c(
-"Sample",
-"Abundance",
-"Run",
-"Group",
-"Expedition",
-"Coleta",
-"Sample.Name",
-"File_name",
-"OTU",
-"final ID",
-"Relative abundance to all samples",
-"Relative abundance on sample",
-"Sample total abundance",
-"Type",
-"Point",
-"Sub.point",
-"Depth",
-"Num.replicates",
-"Obs",
-"Primer",
-"Quantidade.de.ovos.ou.larvas",
-"Kingdom",
-"Phylum",
-"Class",
-"Order",
-"Family",
-"Genus",
-"Species",
-"Specimen",
-"Basin",
-"Read_origin",
-"exact Genus",
-"exact Species",
-"exact GenSp",
+  select(c("Sample", "Abundance", "Run", "Group", "Expedition", "Coleta", "Sample.Name", "File_name", "OTU", "final ID", "Relative abundance to all samples", "Relative abundance on sample", "Sample total abundance", "Type", "Point", "Sub.point", "Depth", "Nu.replicates", "Obs", "Primer", "Quantidade.de.ovos.ou.larvas", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "Specimen", "Basin", "Read_origin",
+"exact Genus", "exact Species", "exact GenSp",
 # "1_res",
 "1_subject header",
 # "1_query",
-"1_subject",
-"1_indentity",
-"1_length",
-"1_mismatches",
-"1_gaps",
-"1_query start",
-"1_query end",
-"1_subject start",
-"1_subject end",
-"1_e-value",
-"1_bitscore",
-"1_qcovhsp",
+"1_subject", "1_indentity", "1_length", "1_mismatches","1_gaps", "1_query start",
+"1_query end", "1_subject start", "1_subject end", "1_e-value", "1_bitscore", "1_qcovhsp",
 # "2_res",
 "2_subject header",
 # "2_query",
-"2_subject",
-"2_indentity",
-"2_length",
-"2_mismatches",
-"2_gaps",
-"2_query start",
-"2_query end",
-"2_subject start",
-"2_subject end",
-"2_e-value",
-"2_bitscore",
-"2_qcovhsp",
+"2_subject", "2_indentity", "2_length", "2_mismatches", "2_gaps", "2_query start", "2_query end", "2_subject start", "2_subject end", "2_e-value", "2_bitscore", "2_qcovhsp",
 # "3_res",
 "3_subject header",
 # "3_query",
-"3_subject",
-"3_indentity",
-"3_length",
-"3_mismatches",
-"3_gaps",
-"3_query start",
-"3_query end",
-"3_subject start",
-"3_subject end",
-"3_e-value",
-"3_bitscore",
-"3_qcovhsp",
-"Tag.pairs",
-"Tag.FWD",
-"Tag.REV",
-"Control",
-"ASV length",
-"ASV header",
+"3_subject", "3_indentity", "3_length", "3_mismatches", "3_gaps", "3_query start",
+"3_query end", "3_subject start", "3_subject end", "3_e-value", "3_bitscore", "3_qcovhsp", "Tag.pairs", "Tag.FWD", "Tag.REV", "Control", "ASV length", "ASV header",
 # "ASV header abd",
 "ASV (Sequence)"
   ))
