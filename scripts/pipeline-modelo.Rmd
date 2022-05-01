@@ -1008,7 +1008,7 @@ referências. Nesta abordagem, a classificação taxonômica é proporcional
 [**Atenção!** Prestar atenção à versão do Banco de Sequências de
 referência]{.ul}
 
-### Classificação taxonômica exata
+### Atribuição taxonômica exata
 
 ```{r, eval=FALSE}
 
@@ -1236,8 +1236,10 @@ get_blastn_results <- function(asv, num_thread = 40) {
 }
 }
 
-# Versões paralelas
-cores_to_be_used <- future::availableCores() - 20 # Usar todos os cores -2 = 78 ## ALTERAR ISSO AQUI DEPOIS DE VER COMO FUNCIONA, O ORIGINAL ERA 2
+## Versões paralelas ----
+  
+  ## O objeto cores_to_be_used define quantos núcleos do servidor serão utilizados para rodar o BLAST. Definiremos o número a partir do número total de núcleos fornecida pela função future::availableCores(), de onde subtrairemos o número de cores que não queremos que seja utilizado. 
+cores_to_be_used <- future::availableCores() - 20 # Usar todos os cores -2 = 78 ## 
 
 cores_to_be_used
 
@@ -1308,6 +1310,8 @@ colnames(all_ps_tbl_blast)
 ```
 
 ### 4. Cálculo das abundâncias
+
+Cálculo da abundância das ASVs por amostra (RRA)
 
 ```{r, eval=FALSE, echo=TRUE}
 
