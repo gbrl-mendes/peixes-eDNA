@@ -1339,13 +1339,18 @@ all_ps_tbl_blast %>%
   select(c("Read_origin","File_name","Relative abundance on sample","Sample total abundance")) %>% View()
 ```
 
-## FINAL id
+## Final ID
+
+Esse trecho do código irá definir qual identificação das ASVs irá ser
+incluída na tabela final de resultados. Se existe espécie e gênero
+exatas, eles serão incluídos. Se não, apenas o gênero ou apenas a
+espécie. Se essas identificações fornecidas pelo DADA2 não estiverem
+disponíveis, então a atribuiição taxonômica será realizada com as
+identificações feitas com as BLAST ids.
 
 ```{r,echo=TRUE, eval=FALSE}
 
-#all_ps_tbl_blast_bckp2 <- all_ps_tbl_blast
-#all_ps_tbl_blast<- all_ps_tbl_blast_bckp2 
-
+## Final ID ----
 
 all_ps_tbl_blast <- all_ps_tbl_blast %>%
   mutate(`exact GenSp` = paste(`exact Genus`,`exact Species`,sep=" "))
@@ -1363,7 +1368,7 @@ all_ps_tbl_blast <- all_ps_tbl_blast %>%
                               as.character(`exact GenSp`)))
 
 
-
+## Fatorização das colunas, para garantir que não existe hierarquia entre as identificações realizadas
 all_ps_tbl_blast <- all_ps_tbl_blast %>%
 mutate(
   Kingdom = factor(Kingdom),
@@ -1384,13 +1389,18 @@ colnames(all_ps_tbl_blast)[colnames(all_ps_tbl_blast) == "ASV"] <- "ASV (Sequenc
 names(all_ps_tbl_blast)[which(names(all_ps_tbl_blast)== "ASV length")] <- "ASV Size (pb)"
 ```
 
-### ASVs seqs
+## Criação de .fasta para as ASVs
+
+Esse trecho do código realiza a criação de um arquivo em formato FASTA
+para armazenamento das ASVs recuperadas no pipeline. O arquivo final se
+chama all_ASVs_all_primers.fasta e está armazenado nas pasta /results do
+projeto.
 
 ```{r,echo=TRUE, eval=FALSE}
-#25 - recover all ASVs sequences to prepare fasta ----
 
-#all ----
-# giving our seq headers more manageable names (ASV_1, ASV_2...)
+## Recuperar todas as sequências das ASVs para preparar o fasta ----
+
+## Fornecendo nomes mais práticos para os cabeçalhos das sequências das ASVs (ASV_1, ASV_2...)
 all_asv_seqs <- tibble("ASV (Sequence)" = unique(all_ps_tbl_blast$`ASV (Sequence)`))
 
 all_asv_seqs <- all_asv_seqs %>%
@@ -1407,13 +1417,13 @@ for (i in 1:nrow(all_asv_seqs)) {
 }
 
 
-#combine ASV headers and all_ps_tbl
+## Combinando os cabeçalhos das ASVs e o arquivo all_ps_tbl
 all_ps_tbl_blast <- dplyr::left_join(x = all_ps_tbl_blast,
                                      y = all_asv_seqs,
                                      by = "ASV (Sequence)" )
 
 
-# making and writing out a fasta of our final ASV seqs with tax
+## Criando e preenchendo o arquivo .fasta com as sequências das ASVs e suas respectivas identificações
 for (asv in 1:nrow(all_asv_seqs)) {
 
   tax <- all_ps_tbl_blast %>%
@@ -1424,13 +1434,9 @@ for (asv in 1:nrow(all_asv_seqs)) {
     paste0(collapse = "|")
 
   all_asv_seqs$`ASV header`[asv] <- paste0(all_asv_seqs$`ASV header`[asv],"_",tax)
-
-  # if (condition) {
-  # fazer algum teste pra ver ser ta certo
-  # }
 }
 
-#write fasta file with ASVs and Taxonomy
+## Escrever o arquivo .fasta com as ASVs e os dados taxonômicos
 all_asv_fasta <- c(rbind(all_asv_seqs$`ASV header`, all_asv_seqs$`ASV (Sequence)`))
 
 write(all_asv_fasta, paste0(results_path,"/",prjct_rad,"-all_ASVs_all_primers.fasta"))
@@ -1441,6 +1447,13 @@ all_ps_tbl_blast$`ASV Size (pb)` %>% table() %>%  plot()
 ```
 
 ## SWARM
+
+Além da criação de ASVs, outro método de realizar a inferência das
+sequências biológicas amplificadas é formação de *Operational Taxonomic
+Units*, OTUs. O SWARM é um programa *open source* desenvolvido com o
+objetivo de realizar a formação das OTUs superando os problemas dos
+métodos clássicos: a dependência de um *threshold* global fixo; a grande
+variabilidade na formação das OTUs formadas.
 
 ```{r,echo=TRUE, eval=FALSE}
 
