@@ -1452,8 +1452,8 @@ Além da criação de ASVs, outro método de realizar a inferência das
 sequências biológicas amplificadas é formação de *Operational Taxonomic
 Units*, OTUs. O SWARM é um programa *open source* desenvolvido com o
 objetivo de realizar a formação das OTUs superando os problemas dos
-métodos clássicos: a dependência de um *threshold* global fixo; a grande
-variabilidade na formação das OTUs formadas.
+métodos clássicos: a dependência de um *threshold* global fixo e a
+grande variabilidade na formação das OTUs formadas.
 
 ```{r,echo=TRUE, eval=FALSE}
 
@@ -1464,7 +1464,7 @@ asvs_abd <- all_ps_tbl_blast %>%
   unique() %>%
   mutate(`ASV header abd` = paste0(`ASV header`,"_",`ASV total abundance`))
 
-#write fasta file with ASVs and Taxonomy
+## Criação de um arquivo FASTA contendo as ASVs e suas respectivas informações taxonômicas
 all_asv_fasta_abd <- c(rbind(asvs_abd$`ASV header abd`, asvs_abd$`ASV (Sequence)`))
 
 write(all_asv_fasta_abd, paste0(results_path,"/",prjct_rad,"_abd.fasta"))
@@ -1481,8 +1481,7 @@ swarm_clust <- list.files(path = swarm_path,
 
 asvs_abd <- asvs_abd %>% mutate("OTU"= 0)
 
-# Função para mapear as OTUs (linhas do swarm) correspondentes a cada ASV 
-
+## Função para mapear as OTUs (linhas do swarm) correspondentes a cada ASV 
 find_otu <- function(ASV_header,clusters_swarm){
   
   ASV_OTU_tbl <- tibble::tibble(`ASV header abd` = ASV_header,
@@ -1499,16 +1498,9 @@ find_otu <- function(ASV_header,clusters_swarm){
               return(ASV_OTU_tbl)
 } 
 
-# Versões paralelas
+## Versões paralelas
 cores_to_be_used <- future::availableCores() - 2 # Usar todos os cores -2 = 78
 future::plan(future::multisession(workers = cores_to_be_used))
-
-
-# 
-# find_otu(ASV_header = asvs_abd$`ASV header abd`[30],
-#          clusters_swarm = swarm_clust)
-
-
 
 ASVs_and_OTUs <- furrr::future_map_dfr(asvs_abd$`ASV header`,
                                        clusters_swarm = swarm_clust,
@@ -1531,12 +1523,8 @@ asvs_abd <- left_join(asvs_abd,
 
 
 all_ps_tbl_blast <- left_join(all_ps_tbl_blast,asvs_abd[,c(1,5)])
-# all_ps_tbl_blast <- left_join(select(all_ps_tbl_blast,-c("OTU")),asvs_abd[,c(1,5)])
-
 all_ps_tbl_blast %>% select(`final ID`,OTU) %>% View() 
 all_ps_tbl_blast %>% select(`final ID`,OTU,`ASV length`) %>% unique() %>% View() 
-
-
 
 all_ps_tbl_blast %>% select(`final ID`,OTU) %>% select(OTU) %>% unique() 
 all_ps_tbl_blast %>% select(`ASV (Sequence)`,`final ID`,OTU) %>% unique() 
