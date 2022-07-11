@@ -165,7 +165,7 @@ mv /home/heron/runs/run5_22dez21/fastq/*/*fastq.gz $RAW_DATA;
 ## Demultiplexando as amostras
 
 -   Cada biblioteca possui amostras que estão combinadas sob um mesmo
-    index Illumina. Agora iremos utilizar as sequências dos primers
+    index Illumina. Agora iremos utilizar as sequências dos *primers*
     indexados para selecionais quais *reads* correspondem a cada amostra
     única. Como o kit de preparação de bibliotecas utilizado
     (Collibri-ThermoFisher) resulta em *amplicons* sequenciados em ambas
@@ -1425,8 +1425,18 @@ all_ps_tbl_blast <- dplyr::left_join(x = all_ps_tbl_blast,
 
 ## Criando e preenchendo o arquivo .fasta com as sequências das ASVs e suas respectivas identificações
 for (asv in 1:nrow(all_asv_seqs)) {
-
+  
+  asv <- 3
+  
   tax <- all_ps_tbl_blast %>%
+    mutate(
+      # Read_origin = unfactor(Read_origin),
+      Family = unfactor(Family),
+      Genus = unfactor(Genus),
+      Species = unfactor(Species),
+      `final ID` = unfactor(`final ID`)
+    ) %>% 
+    ungroup() %>% 
       filter(`ASV (Sequence)` == all_asv_seqs$`ASV (Sequence)`[asv]) %>%
     # select("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "Specimen") %>%
     select("Read_origin", "Family", "Genus", "Species", "final ID") %>%
@@ -1439,7 +1449,7 @@ for (asv in 1:nrow(all_asv_seqs)) {
 ## Escrever o arquivo .fasta com as ASVs e os dados taxonômicos
 all_asv_fasta <- c(rbind(all_asv_seqs$`ASV header`, all_asv_seqs$`ASV (Sequence)`))
 
-write(all_asv_fasta, paste0(results_path,"/",prjct_rad,"-all_ASVs_all_primers.fasta"))
+write(all_asv_fasta, paste0(results_path,"/",prjct_rad,"-all_ASVs_all_primers.fasta")) ## essa é a saida do pipeline
 
 all_ps_tbl_blast$Abundance %>% table() %>%  plot()
 all_ps_tbl_blast$`Relative abundance on sample` %>% table() %>%  plot()
@@ -1541,8 +1551,7 @@ all_ps_tbl_blast %>% select(`ASV (Sequence)`,`final ID`,OTU) %>% unique()
 
 all_ps_tbl_blast <-
   all_ps_tbl_blast %>%
-  select(c("Sample", "Abundance", "Run", "Group", "Expedition", "Coleta", "Sample.Name", "File_name", "OTU", "final ID", "Relative abundance to all samples", "Relative abundance on sample", "Sample total abundance", "Type", "Point", "Sub.point", "Depth", "Nu.replicates", "Obs", "Primer", "Quantidade.de.ovos.ou.larvas", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "Specimen", "Basin", "Read_origin",
-"exact Genus", "exact Species", "exact GenSp",
+  select(c("Sample", "Abundance", "Run", "Group", "Expedition", "Coleta", "Sample.Name", "File_name", "OTU", "final ID", "Relative abundance to all samples", "Relative abundance on sample", "Sample total abundance", "Type", "Point", "Sub.point", "Depth", "Nu.replicates", "Obs", "Primer", "Quantidade.de.ovos.ou.larvas", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "Specimen", "Basin", "Read_origin", "exact Genus", "exact Species", "exact GenSp",
 # "1_res",
 "1_subject header",
 # "1_query",
@@ -1688,6 +1697,9 @@ all_ps_tbl_blast$Remove %>%  table()
 
 ```{r,echo=TRUE, eval=FALSE}
 
+## colnames(all_ps_tbl_blast)
+
+## all_ps_tbl_blast <- all_ps_tbl_blast %>% select(-c("ASV header.x","ASV length.x", "ASV header.y", "ASV length.y", "ASV header.x.x", "ASV length", "ASV header.y.y"))
 
 #order by abundance
 
