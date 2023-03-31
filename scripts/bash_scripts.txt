@@ -1,0 +1,13 @@
+Comandos executados no Terminal em Bash
+
+1) Contando o número total de reads dos arquivos .fastq:
+  
+  total_reads=0; for file in *.fastq; 
+  do if [[ "$file" =~ "MiFish_F001" ]] || [[ "$file" =~ "MiFish_R001" ]];
+  then echo "O arquivo ${file} será ignorado."; 
+  else echo "Contando reads em ${file}..."; 
+  reads=$(grep -c "^@" ${file}); 
+  echo "${file} tem ${reads} reads."; 
+  total_reads=$((total_reads + reads));
+  fi; done; echo "O número total de reads em todos os arquivos é ${total_reads}."
+  

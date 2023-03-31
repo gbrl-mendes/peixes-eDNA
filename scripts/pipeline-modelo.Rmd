@@ -1426,8 +1426,6 @@ all_ps_tbl_blast <- dplyr::left_join(x = all_ps_tbl_blast,
 ## Criando e preenchendo o arquivo .fasta com as sequências das ASVs e suas respectivas identificações
 for (asv in 1:nrow(all_asv_seqs)) {
   
-  asv <- 3
-  
   tax <- all_ps_tbl_blast %>%
     mutate(
       # Read_origin = unfactor(Read_origin),
@@ -1449,7 +1447,8 @@ for (asv in 1:nrow(all_asv_seqs)) {
 ## Escrever o arquivo .fasta com as ASVs e os dados taxonômicos
 all_asv_fasta <- c(rbind(all_asv_seqs$`ASV header`, all_asv_seqs$`ASV (Sequence)`))
 
-write(all_asv_fasta, paste0(results_path,"/",prjct_rad,"-all_ASVs_all_primers.fasta")) ## essa é a saida do pipeline
+write(all_asv_fasta,
+      paste0(results_path,"/",prjct_rad,"-all_ASVs_all_primers.fasta")) ## essa é a saida do pipeline
 
 all_ps_tbl_blast$Abundance %>% table() %>%  plot()
 all_ps_tbl_blast$`Relative abundance on sample` %>% table() %>%  plot()
