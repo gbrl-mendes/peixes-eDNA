@@ -1,0 +1,8145 @@
+---
+title: "Re-Análise de Amostras da Lagoa dos Ingleses, Runs 2, 4 e 5"
+author: 
+  - "Hilário, OH; Mendes, GA"
+date: "25/09/2023"
+output: 
+  html_document:
+    code_download: yes
+    df_print: paged
+    keep_md: yes
+    theme: flatly
+    toc: true
+    toc_depth: 5
+    toc_float: true
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+
+ <font size="0.5">**This pipeline integrates public tools available for metabarcoding analyses. To share or reproduce this content, please require authors' consent.**  
+**Contact:** lgc.edna@gmail.com, heronoh@gmail.com</font> 
+
+# Short introduction
+
+  
+Welcome! We will guide you trought the analysis of environmental eDNA from WWF samples. The samples were amplified  using the multiple primers .
+
+To proceed you will need the raw reads files and a .csv file with: 
+
+a) a column listing all samples, with unique names identical to raw reads radicals (_File_name_); 
+
+b) a column with the respective primer used for each sample; 
+
+c) other columns for any metadata available.
+
+
+
+# Bioinformatics
+
+## Raw data aquisition
+
+### Get reads from Base Sapce  
+
+### Prepare analyses working directory
+
+
+```bash
+# 1 - creat a folder for all analyses files 
+
+  #optionally, create the folders and paths as you want
+# save project path into a bash variable
+PRJCT_DIR=~/prjcts/ecomol/analyses/2023/WWF
+
+# chech variable
+echo $PRJCT_DIR;
+
+# create folder
+mkdir -p $PRJCT_DIR;
+
+```
+
+### Get reads from Base Sapce  
+
+This part is only required if your read files is on Basespace. If the read files are already downloaded, proceed to the next section.
+
+
+```bash
+# 1 - create and navigate to run files folder
+mkdir ~/prjcts/ecomol/analyses/2023/WWF;
+
+cd  ~/prjcts/ecomol/analyses/2023/WWF;
+
+# 2 - download run from BaseSpace
+# 2a - autenticate to basespace (must have a basespace account and shared projects/runs)
+bs auth;
+
+# 2b - list your projects data
+bs list datasets;
+
+# 2c - download demultiplexed read files
+
+bs download project -n "XXXXXXXX" -o fastq --extension=fastq.gz
+
+
+# 3 - organize raw data
+#go to reads directory
+cd /data/data_raw/ecomol/fastq/XXXXXXXX;
+
+#create folder for raw files
+mkdir raw;
+
+# store raw data path into variable
+RAW_DATA=~/prjcts/ecomol/analyses/2023/WWF/data/reads
+#or list it for each sample on the .csv input (column "Raw data path")
+
+#copy/move all fastqs to raw folder */*
+#     possibilita a copia dos arquivos com nome comecando com EM118 e terminando com gz para a pasta raw a aprtir da pasta fastq
+
+mv $RAW_DATA/fastq/EM118_*/*gz $RAW_DATA/raw; 
+
+ls $RAW_DATA/raw; 
+
+```
+
+
+## Demultiplexing with cutadapt
+
+<https://cutadapt.readthedocs.io/en/stable/guide.html#combinatorial-demultiplexing>
+
+
+```bash
+
+mkdir $PRJCT_DIR/dmux
+
+#na edna com
+sysctl -w fs.file-max=100000
+
+#https://www.cyberciti.biz/faq/linux-increase-the-maximum-number-of-open-files/
+ulimit -n 1000000
+
+#combine file to demultiplex at once
+ #            cat $RAW_DATA/*22dez21*R1* > $RAW_DATA/LGC_run5_R1.fastq.gz
+ #            cat $RAW_DATA/*22dez21*R2* > $RAW_DATA/LGC_run5_R2.fastq.gz
+
+
+
+
+
+
+#demultiplexando sem remover os primers, para integrar no pipeline normal
+# WWF
+cutadapt -e 0.05 -j 80 --no-indels --max-n 0 \
+ --discard-untrimmed \
+ --action retain \
+ -g file:/home/heron/prjcts/ecomol/analyses/2023/WWF/dmux/all_indexes_12SV5.fasta \
+ -G file:/home/heron/prjcts/ecomol/analyses/2023/WWF/dmux/all_indexes_12SV5.fasta \
+ -o /home/heron/prjcts/ecomol/analyses/2023/WWF/dmux/raw/{name1}-{name2}.R1.fastq.gz \
+ -p /home/heron/prjcts/ecomol/analyses/2023/WWF/dmux/raw/{name1}-{name2}.R2.fastq.gz \
+   /data/data_raw/ecomol/MCTI/EM112_12Sv5_AguaSoloMG/raw/12SV5_Solo_Agua_MG_S2_L001_R1_001.fastq.gz \
+   /data/data_raw/ecomol/MCTI/EM112_12Sv5_AguaSoloMG/raw/12SV5_Solo_Agua_MG_S2_L001_R2_001.fastq.gz \
+ 2> /home/heron/prjcts/ecomol/analyses/2023/WWF/dmux/WWF-12SV5_Solo_Agua_MG-dmx_cut_e05_noNs.txt;
+
+
+
+
+## EM112_MiBird_AguaSoloMG samples
+#cutadapt -e 0.05 -j 20 --no-indels --max-n 0 \
+# -g file:~/prjcts/ecomol/primers_and_indexes/all_indexes_12SV5.fasta \
+# -G file:~/prjcts/ecomol/primers_and_indexes/all_indexes_12SV5.fasta \
+# -o ~/prjcts/ecomol/analyses/2023/WWF/dmux/EM112_MiBird_AguaSoloMG/{name1}-{name2}.R1.fastq \
+# -p ~/prjcts/ecomol/analyses/2023/WWF/dmux/EM112_MiBird_AguaSoloMG/{name1}-{name2}.R2.fastq \
+#   /data/data_raw/ecomol/WWF/EM112_MiBird_AguaSoloMG/raw/MiBird_Solo_Agua_MG_S1_L001_R1_001.fastq.gz \
+#   /data/data_raw/ecomol/WWF/EM112_MiBird_AguaSoloMG/raw/MiBird_Solo_Agua_MG_S1_L001_R2_001.fastq.gz \
+# 2> ~/prjcts/ecomol/analyses/2023/WWF/dmux/EM112_MiBird_AguaSoloMG/EM112_MiBird_AguaSoloMG-dmx_cut_e05_noNs.txt;
+
+
+
+ find ../all -type f -empty -print -delete
+ 
+  echo $(cat *_*_*fastq | wc -l)/4|bc
+
+```
+
+
+
+## Combine demultiplexed FWD and REV files into single R1 & R2 pair 
+
+
+```r
+BiocManager::install("Rfastp")
+library("Rfastp")
+
+
+
+dmux_files <- list.files("/home/heron/prjcts/ecomol/analyses/2023/WWF/dmux/raw",full.names = T)
+dmux_combined_folder <- "/home/heron/prjcts/ecomol/analyses/2023/WWF/dmux/raw_combined"
+
+dmux_idxs <- readr::read_csv(file = "~/prjcts/ecomol/analyses/2023/WWF/dmux/Sequenciamentos_AmostrasWWF_enviadas_Heron_130723-dmux.csv") %>% 
+  mutate("FWD rad R1" = paste(`Index name FWD`, "-", `Index name REV`, ".R1.",sep = ""),
+         "FWD rad R2" = paste(`Index name FWD`, "-", `Index name REV`, ".R2.",sep = ""),
+         "REV rad R1" = paste(`Index name REV`, "-", `Index name FWD`, ".R1.",sep = ""),
+         "REV rad R2" = paste(`Index name REV`, "-", `Index name FWD`, ".R2.",sep = "")
+         ) %>% 
+  group_by(File_name) %>% 
+  mutate("FWD file R1" = grep(pattern = `FWD rad R1`, x = dmux_files, value = T),
+         "FWD file R2" = grep(pattern = `FWD rad R2`, x = dmux_files, value = T),
+         "REV file R1" = grep(pattern = `REV rad R1`, x = dmux_files, value = T),
+         "REV file R2" = grep(pattern = `REV rad R2`, x = dmux_files, value = T)) %>% 
+  mutate("Combined R1" = paste0(dmux_combined_folder,"/",File_name,"-R1.fastq.gz"),
+         "Combined R2" = paste0(dmux_combined_folder,"/",File_name,"-R2.fastq.gz")) %>% 
+  ungroup()
+
+for (sample in 1:nrow(dmux_idxs)) {
+  
+  print(paste0("Working on sample ",dmux_idxs$File_name[sample] ))
+  
+  catfastq(output = dmux_idxs$`Combined R1`[sample],
+           inputFiles = c(dmux_idxs$`FWD file R1`[sample],
+                          dmux_idxs$`REV file R1`[sample]))
+  
+  catfastq(output = dmux_idxs$`Combined R2`[sample],
+           inputFiles = c(dmux_idxs$`FWD file R2`[sample],
+                          dmux_idxs$`REV file R2`[sample]))
+}
+
+# now the 4 files are combined into a single pair with names!
+# can be run into non-dmx pipe normally!
+```
+
+### Quality checking
+
+
+```bash
+# 1 - creat folder for quality checking files
+
+mkdir $PRJCT_DIR/quality;
+
+# 2 - run FASTqc on all reads 
+
+ls $RAW_DATA/raw/*
+
+#roda um por vez
+#fastqc $RAW_DATA/* --outdir $PRJCT_DIR/quality
+
+#roda todos os arquivos em paralelo
+find $RAW_DATA/raw -name '*.fastq.gz' 2>/dev/null | parallel fastqc {1} -o $PRJCT_DIR/quality/
+find $RAW_DATA/raw/* -name '*.fq' 2>/dev/null | parallel fastqc {1} -o $PRJCT_DIR/quality/
+
+# 3 - run MULTIqc on FASTqc files to integrate results
+## erro no python
+
+mkdir $PRJCT_DIR/quality/multiqc 
+multiqc --interactive $PRJCT_DIR/quality --outdir $PRJCT_DIR/quality/multiqc 
+
+# 4 - navigate on the files Rstudio pannel to open MULTIqc report on web browser and view results
+```
+
+## Raw data preprocessing
+
+Now with quality assessment done, we will proceed into quality filtering, sample definition, primer removal and other steps. The main package used is DADA2 (https://doi.org/10.1038/nmeth.3869).
+
+### DADA2
+
+#### Load  R libs
+
+
+```r
+# 0 - load libraries and other programs ----
+{
+  library(dplyr)
+  library(tidyr)
+  library(tibble)
+  library(stringr)
+  library(ggplot2)
+  library(ggbreak)
+  library(phyloseq)
+  library(Biostrings)
+  library(Matrix)
+  library(ShortRead)
+  library(dada2)
+  library(DECIPHER)
+  library(future)
+  library(ggh4x)
+  library(vegan)
+  library(plotly)
+  library(ggtext)
+}
+
+# complete path to cutadapt executable
+cutadapt <- "/usr/local/bin/cutadapt"
+```
+
+<br>
+
+#### Set output and data paths
+
+Here we will define a single project folder, and the pipeline will create the necessary subfolders for results organization.
+Only the this main project folder has to be edited on the code bellow.
+
+
+
+```r
+# 1 - create and set output and input paths ----
+
+  # use the same path you created on the bash $PRJCT_DIR variable
+  analysis_path <- "~/prjcts/ecomol/analyses/2023/WWF"
+
+
+# This block is automated and can be executed alone, before the first '{'
+
+{  
+    
+  #project name radical
+  prjct_rad <-c("WWF")
+  
+  
+  # create data_folder
+  data_path <- paste0(analysis_path,"/data")
+  if(!dir.exists(data_path)){ 
+    dir.create(data_path)
+  }else{
+      print(paste0("The folder data_path already exists"))
+    }
+  
+  # create quality_folder
+  qual_path <- paste0(analysis_path,"/quality")
+  if(!dir.exists(qual_path)){ 
+    dir.create(qual_path)
+  }else{
+      print(paste0("The folder data_path already exists"))
+    }
+  
+  # create quality_folder
+  multi_path <- paste0(qual_path,"/multiqc")
+  if(!dir.exists(multi_path)){ 
+    dir.create(multi_path)
+  }else{
+      print(paste0("The folder data_path already exists"))
+    }
+  
+  # create processed reads folder
+  pipe_libs <- paste0(data_path,"/reads")
+  if(!dir.exists(pipe_libs)){ 
+    dir.create(pipe_libs)
+  }else{
+      print(paste0("The folder pipe_libs already exists"))
+    }
+  
+  # create processed reads folder
+  raw_libs <- paste0(data_path,"/reads/raw")
+  if(!dir.exists(raw_libs)){ 
+    dir.create(raw_libs)
+  }else{
+      print(paste0("The folder raw_libs already exists"))
+    }
+  
+  # create processed reads folder
+  cutadapt_libs <- paste0(data_path,"/reads/cutadapt")
+  if(!dir.exists(cutadapt_libs)){ 
+    dir.create(cutadapt_libs)
+  }else{
+      print(paste0("The folder cutadapt_libs already exists"))
+    }
+  
+  # create results folder
+  results_path <- paste0(analysis_path,"/results")
+  if(!dir.exists(results_path)){ 
+    dir.create(results_path)
+  }else{
+      print(paste0("The folder results_path already exists"))
+    }
+  
+  # create figs folder
+  figs_path <- paste0(results_path,"/figs")
+  if(!dir.exists(figs_path)){ 
+    dir.create(figs_path)
+  }else{
+      print(paste0("The folder figs_path already exists"))
+    }
+  
+  # create blast folder
+  blast_path <- paste0(results_path,"/blast")
+  if(!dir.exists(blast_path)){ 
+    dir.create(blast_path)
+  }else{
+      print(paste0("The folder blast_path already exists"))
+    }
+  
+  # create swarm folder
+  swarm_path <- paste0(results_path,"/swarm")
+  if(!dir.exists(swarm_path)){ 
+    dir.create(swarm_path)
+  }else{
+      print(paste0("The folder swarm_path already exists"))
+    }
+
+}
+
+list.files(analysis_path)
+```
+
+
+
+
+
+## Check samples
+
+
+```r
+# load primers indexes and samples table
+
+## This is the most impotant input on the anlaysis
+### Required columns with unique values: File_name, Primer FWD_sequence, Primer REV_sequence
+
+#### This table was edited on https://docs.google.com/spreadsheets/d/1KnJOHQiDOGlJqXpxUwqpI67WV_zRuZNg/edit#gid=1273543466 on the tab with same date label
+
+primers_n_samples <- readr::read_csv(file = "~/prjcts/ecomol/analyses/2023/WWF/data/WWF-primers_n_samples.csv") %>% 
+  # unite(col = "Unique_File_name",
+  #       File_name, Primer,
+  #       remove = F, sep = "_") %>%
+  mutate("Unique_File_name" = File_name) %>%
+  relocate(Unique_File_name) 
+# %>% 
+#   select(where(~ !(all(is.na(.)) | all(. == ""))))
+
+
+# Test if file names are unique?
+if (nrow(primers_n_samples) != length(unique(primers_n_samples$Unique_File_name))) {
+  
+  print("Your file names are not unique")
+  print(paste0("The file names:"))
+  print(paste0(primers_n_samples$Unique_File_name[duplicated(primers_n_samples$Unique_File_name)],collapse = "\n "))
+  print(paste0("apear more than once"))
+  
+}else{
+    
+  print("All file names are unique!")
+  }
+
+      
+# creating places to store raw data path ----
+primers_n_samples <- primers_n_samples %>%
+  as_tibble() %>%
+  mutate("Lib name F" = "Lib name F",
+         "Lib name R" = "Lib name R")
+
+# chech if is there any duplicated file name ----
+primers_n_samples %>% nrow()
+primers_n_samples$Unique_File_name %>% length()
+primers_n_samples$Unique_File_name %>% unique() %>% length()
+primers_n_samples$Unique_File_name %>% duplicated() %>% which()
+primers_n_samples$Unique_File_name[primers_n_samples$Unique_File_name %>% duplicated()]
+
+
+
+#recover file name radicals for linking raw files to samples ----
+          
+
+for (line in 1:nrow(primers_n_samples)) {
+
+  if (primers_n_samples$Demultiplexed[line] == TRUE) {
+    primers_n_samples$`Lib name F`[line] <- paste0(primers_n_samples$`Primer FWD_name`[line],"-",primers_n_samples$`Primer REV_name`[line])
+    primers_n_samples$`Lib name R`[line] <- paste0(primers_n_samples$`Primer REV_name`[line],"-",primers_n_samples$`Primer FWD_name`[line])
+  }else {
+    # primers_n_samples$`Lib name F`[line] <- NA
+    primers_n_samples$`Lib name F`[line] <- primers_n_samples$File_name[line]
+  }
+}
+          
+          
+          # chech if is there any duplicated tag pair ----
+          dplyr::select(primers_n_samples,c("Primer FWD_name","Primer REV_name","Lib")) %>% unite(col = "col",sep = "-")
+          dplyr::select(primers_n_samples,c("Primer FWD_name","Primer REV_name","Lib")) %>% unite(col = "col",sep = "-") %>% nrow()
+          dplyr::select(primers_n_samples,c("Primer FWD_name","Primer REV_name","Lib")) %>% unite(col = "col",sep = "-") %>% unique() %>% nrow()
+          dplyr::select(primers_n_samples,c("Primer FWD_name","Primer REV_name","Lib")) %>% unite(col = "col",sep = "-") %>% duplicated() %>% which()
+          dplyr::select(primers_n_samples,c("Primer FWD_name","Primer REV_name","Lib")) %>% unite(col = "col",sep = "-") %>% duplicated() %>% which()
+          
+          
+          primers_n_samples$File_name[select(primers_n_samples,c("Primer FWD_name","Primer REV_name")) %>% unite(col = "col",sep = "-") %>% duplicated() %>% which()]
+          
+          #there is no problem if are there duplicate tags since there is more than one run.
+```
+
+
+## Quality control of sequencing data
+
+
+
+```r
+# find /data/data_raw/other_eDNA/WWF/raw/*/ -name '*.gz' 2>/dev/null | parallel fastqc {1} -o /home/heron/prjcts/ecomol/analyses/2023/WWF/quality/
+
+primers_n_samples$`Raw data path` %>% unique() %>% list.files()
+
+# 1 - run FastQC for all read files ----
+for (sequence in primers_n_samples$`Raw data path` %>% unique()) {
+  
+  system2(command = "find", args = c(
+    paste0(sequence, " -name '*.gz' 2>/dev/null | parallel fastqc {1} -o ", qual_path))
+    )
+  
+}
+
+# 2 - run MultiQC for all FastQC reports ----
+
+
+  system2(command = "multiqc", args = c(
+    paste0("--interactive ", qual_path, " --filename ", multi_path, "/", prjct_rad, "-sequence_quality-MultiQC_report.html"))
+    )
+```
+
+## Repairing
+
+To avoid merging reads that did no come from the same cluster, we must check read pairing and remove unpaired (mandatory on DADA2).
+
+
+```r
+#on bash, remove empty files
+
+
+
+#list files
+# libs_path <- "~/runs/run5_22dez21/dmux_CDI"
+
+# all_fnFs <- sort(list.files(libs_path, pattern=".R1.fastq", full.names = TRUE))
+# all_fnRs <- sort(list.files(libs_path, pattern=".R2.fastq", full.names = TRUE))
+
+#list complete paths for all reads files
+
+
+# colnames(primers_n_samples)[colnames(primers_n_samples) == "Paired data path"] <- "Raw data path"
+all_fnFs <- sort(list.files((primers_n_samples$`Raw data path` %>%  unique()), 
+                            pattern="_R1_001.fastq|_R1_001.fastq.gz|\\.1.fastq|\\.R1.fastq|\\R1.fq|\\R1.fastq|1.fq.gz", full.names = TRUE)) 
+# %>% 
+#   str_replace(pattern = "/home/noreh",replacement = "~")
+all_fnRs <- sort(list.files((primers_n_samples$`Raw data path` %>%  unique()), 
+                            pattern = "_R2_001.fastq|_R2_001.fastq.gz|\\.2.fastq|\\.R2.fastq|\\R2.fq|\\R2.fastq|2.fq.gz", full.names = TRUE))
+# %>% 
+  # str_replace(pattern = "/home/noreh",replacement = "~")
+
+
+
+
+length(all_fnFs)
+length(all_fnRs)
+
+#6- loading sample data (origin and indexes)
+
+
+sample_idx_tbl_wide <- primers_n_samples %>% dplyr::select(c("Unique_File_name", "File_name", "Lib", 
+                                                 # "Primer FWD_sequence", "Primer REV_sequence",
+                                                 "Project",
+                                                 "Researcher",
+                                                 "Sample",
+                                                 "Primer FWD_name","Primer REV_name",
+                                                 "Demultiplexed","Raw data path","Primer",
+                                                 "Lib name F", "Lib name R",
+                                                 starts_with("metadata"),
+                                                 ends_with("control") ))
+
+
+sample_idx_tbl_wide <- sample_idx_tbl_wide %>%
+  mutate("FWD_R1" = "F-R1",
+         "FWD_R2" = "F-R2",
+         "REV_R1" = "R-R1",
+         "REV_R2" = "R-R2")
+
+
+# for both demultiplexed or not ----
+for (sample in 1:nrow(sample_idx_tbl_wide)) {
+
+  print(sample_idx_tbl_wide$File_name[sample])
+  
+  if (sample_idx_tbl_wide$Demultiplexed[sample] == FALSE) {
+    
+    
+    sample_idx_tbl_wide$FWD_R1[sample] <- all_fnFs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name F`[sample],"_"),x = all_fnFs)]
+    
+    sample_idx_tbl_wide$FWD_R2[sample] <-  all_fnRs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name F`[sample],"_"),x = all_fnRs)]
+
+      print(sample_idx_tbl_wide$File_name[sample])
+          print(all_fnFs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name F`[sample],"_"),x = all_fnFs)])
+          print(all_fnRs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name F`[sample],"_"),x = all_fnRs)])
+    
+  }else{
+    
+    
+    print(all_fnFs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name R`[sample],"\\.R"),x = all_fnFs)])
+    
+    #FWD oriented amplicon
+    
+  if(!identical(character(0),all_fnFs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name F`[sample],".R"),
+                                      fixed = T,
+                                      x = all_fnFs)])){
+  sample_idx_tbl_wide$FWD_R1[sample]  <- all_fnFs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name F`[sample],".R"),
+                                      fixed = T,
+                                      x = all_fnFs)]
+  }
+
+    
+    
+  if(!identical(character(0),all_fnRs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name F`[sample],".R"),
+                                      fixed = T,
+                                      x = all_fnRs)])){
+  sample_idx_tbl_wide$FWD_R2[sample]  <- all_fnRs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name F`[sample],".R"),
+                                      fixed = T,
+                                      x = all_fnRs)]
+  }
+
+    #REV oriented amplicon
+    
+  if(!identical(character(0),all_fnFs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name R`[sample],".R"),
+                                      fixed = T,
+                                      x = all_fnFs)])){
+  sample_idx_tbl_wide$REV_R1[sample]  <- all_fnFs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name R`[sample],".R"),
+                                      fixed = T,
+                                      x = all_fnFs)]
+  }
+
+    
+    
+  if(!identical(character(0),all_fnRs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name R`[sample],".R"),
+                                      fixed = T,
+                                      x = all_fnRs)])){
+  sample_idx_tbl_wide$REV_R2[sample]  <- all_fnRs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                     "/",sample_idx_tbl_wide$`Lib name R`[sample],".R"),
+                                      fixed = T,
+                                      x = all_fnRs)]
+  }
+  }
+}
+# 
+
+
+
+
+sample_idx_tbl_wide$FWD_R1[sample_idx_tbl_wide$FWD_R1 %>% duplicated()]
+sample_idx_tbl_wide$FWD_R2[sample_idx_tbl_wide$FWD_R2 %>% duplicated()]
+
+# create file paths for paired reads ----
+
+sample_idx_tbl_wide <- sample_idx_tbl_wide %>%
+  mutate("FWD_R1_paired" = "fwd_R1_paired",
+         "FWD_R2_paired" = "fwd_R2_paired",
+         "REV_R1_paired" = "rev_R1_paired",
+         "REV_R2_paired" = "rev_R2_paired")
+
+
+
+#create dir for recovered paired reads
+ dir.create(path = paste0(pipe_libs,"/paired"),showWarnings = TRUE) 
+ paired_libs <- paste0(pipe_libs,"/paired")
+ 
+ 
+# Used for both demultiplexes and not, changing file names form tags to File_name radical
+
+for (sample in 1:nrow(sample_idx_tbl_wide)) {
+
+  if (sample_idx_tbl_wide$Demultiplexed[sample] == FALSE) { 
+    sample_idx_tbl_wide$FWD_R1_paired[sample] <- all_fnFs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                            "/",sample_idx_tbl_wide$`Lib name F`[sample],"_"),
+                                      fixed = T,x = all_fnFs)] %>%
+      str_replace(pattern = sample_idx_tbl_wide$`Raw data path`[sample],
+                  replacement = paired_libs) %>% 
+      str_replace(pattern = sample_idx_tbl_wide$`Lib name F`[sample],
+                  replacement = paste0(sample_idx_tbl_wide$Unique_File_name[sample],"-FWD_R1") )
+
+    sample_idx_tbl_wide$FWD_R2_paired[sample] <- all_fnRs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                            "/",sample_idx_tbl_wide$`Lib name F`[sample],"_"),
+                                      fixed = T,x = all_fnRs)] %>% 
+      str_replace(pattern = sample_idx_tbl_wide$`Raw data path`[sample],
+                  replacement = paired_libs) %>% 
+      str_replace(pattern = sample_idx_tbl_wide$`Lib name F`[sample],
+                  replacement = paste0(sample_idx_tbl_wide$Unique_File_name[sample],"-FWD_R2") )
+
+
+  }else{
+
+    #FWD amplicon
+    if(!identical(character(0),all_fnFs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],############################ adicionar o _ 
+                                                                            "/",sample_idx_tbl_wide$`Lib name F`[sample],".R"),
+                                      fixed = T,x = all_fnFs)])){
+    sample_idx_tbl_wide$FWD_R1_paired[sample] <- all_fnFs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                            "/",sample_idx_tbl_wide$`Lib name F`[sample],".R"),
+                                      fixed = T,x = all_fnFs)] %>% 
+      str_replace(pattern = sample_idx_tbl_wide$`Raw data path`[sample],
+                  replacement = paired_libs) %>% 
+      str_replace(pattern = sample_idx_tbl_wide$`Lib name F`[sample],
+                  replacement = paste0(sample_idx_tbl_wide$Unique_File_name[sample],"-FWD_R1") )
+    }
+
+    if(!identical(character(0),all_fnRs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                            "/",sample_idx_tbl_wide$`Lib name F`[sample],".R"),
+                                      fixed = T,x = all_fnRs)])){
+    sample_idx_tbl_wide$FWD_R2_paired[sample] <- all_fnRs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                            "/",sample_idx_tbl_wide$`Lib name F`[sample],".R"),
+                                      fixed = T,x = all_fnRs)] %>% 
+      str_replace(pattern = sample_idx_tbl_wide$`Raw data path`[sample],
+                  replacement = paired_libs) %>% 
+      str_replace(pattern = sample_idx_tbl_wide$`Lib name F`[sample],
+                  replacement = paste0(sample_idx_tbl_wide$Unique_File_name[sample],"-FWD_R2") )
+    }
+
+    #REV amplicon
+    if(!identical(character(0),all_fnFs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                            "/",sample_idx_tbl_wide$`Lib name R`[sample],".R"),
+                                      fixed = T,x = all_fnFs)])){
+    sample_idx_tbl_wide$REV_R1_paired[sample] <- all_fnFs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                            "/",sample_idx_tbl_wide$`Lib name R`[sample],".R"),
+                                      fixed = T,x = all_fnFs)] %>% 
+      str_replace(pattern = sample_idx_tbl_wide$`Raw data path`[sample],
+                  replacement = paired_libs) %>% 
+      str_replace(pattern = sample_idx_tbl_wide$`Lib name R`[sample],
+                  replacement = paste0(sample_idx_tbl_wide$Unique_File_name[sample],"-REV_R1") )
+    }
+
+    if(!identical(character(0),all_fnRs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                            "/",sample_idx_tbl_wide$`Lib name R`[sample],".R"),
+                                      fixed = T,x = all_fnRs)])){
+    sample_idx_tbl_wide$REV_R2_paired[sample] <- all_fnRs[grep(pattern =  paste0(sample_idx_tbl_wide$`Raw data path`[sample],
+                                                                            "/",sample_idx_tbl_wide$`Lib name R`[sample],".R"),
+                                      fixed = T,x = all_fnRs)] %>% 
+      str_replace(pattern = sample_idx_tbl_wide$`Raw data path`[sample],
+                  replacement = paired_libs) %>% 
+      str_replace(pattern = sample_idx_tbl_wide$`Lib name R`[sample],
+                  replacement = paste0(sample_idx_tbl_wide$Unique_File_name[sample],"-REV_R2") )
+    }
+
+  }
+}
+
+
+sample_idx_tbl_wide$FWD_R1 %>% basename()
+sample_idx_tbl_wide$FWD_R1_paired %>% basename()
+
+
+#naming read files with sample names ----
+ # OBS: FWD and REV amplicons have the same File_name (DANGER!!)
+{
+  names(sample_idx_tbl_wide$FWD_R1) <- paste0(sample_idx_tbl_wide$Unique_File_name,"-","FWD")
+  names(sample_idx_tbl_wide$FWD_R2) <- paste0(sample_idx_tbl_wide$Unique_File_name,"-","FWD")
+  names(sample_idx_tbl_wide$REV_R1) <- paste0(sample_idx_tbl_wide$Unique_File_name,"-","REV")
+  names(sample_idx_tbl_wide$REV_R2) <- paste0(sample_idx_tbl_wide$Unique_File_name,"-","REV")
+  names(sample_idx_tbl_wide$FWD_R1_paired) <- paste0(sample_idx_tbl_wide$Unique_File_name,"-","FWD")
+  names(sample_idx_tbl_wide$FWD_R2_paired) <- paste0(sample_idx_tbl_wide$Unique_File_name,"-","FWD")
+  names(sample_idx_tbl_wide$REV_R1_paired) <- paste0(sample_idx_tbl_wide$Unique_File_name,"-","REV")
+  names(sample_idx_tbl_wide$REV_R2_paired) <- paste0(sample_idx_tbl_wide$Unique_File_name,"-","REV")
+  names(sample_idx_tbl_wide$`Raw data path`) <- sample_idx_tbl_wide$Unique_File_name
+}
+
+
+
+reads_fnFs <- c(sample_idx_tbl_wide$FWD_R1,sample_idx_tbl_wide$REV_R1)
+reads_fnRs <- c(sample_idx_tbl_wide$FWD_R2,sample_idx_tbl_wide$REV_R2)
+reads_fnFs_paired <- c(sample_idx_tbl_wide$FWD_R1_paired,sample_idx_tbl_wide$REV_R1_paired)
+reads_fnRs_paired <- c(sample_idx_tbl_wide$FWD_R2_paired,sample_idx_tbl_wide$REV_R2_paired)
+
+
+
+
+
+#remove unexisting paths (from REV amplicons)
+
+reads_fnFs <- reads_fnFs[!reads_fnFs %in% c("R-R1","rev_R1_paired","R-R2","rev_R2_paired")]
+reads_fnRs <- reads_fnRs[!reads_fnRs %in% c("R-R1","rev_R1_paired","R-R2","rev_R2_paired")]
+reads_fnFs_paired <- reads_fnFs_paired[!reads_fnFs_paired %in% c("R-R1","rev_R1_paired","R-R2","rev_R2_paired")]
+reads_fnRs_paired <- reads_fnRs_paired[!reads_fnRs_paired %in% c("R-R1","rev_R1_paired","R-R2","rev_R2_paired")]
+
+
+#check vectors length
+
+length(reads_fnFs)
+length(reads_fnRs)
+length(reads_fnFs_paired)
+length(reads_fnRs_paired)
+
+
+names(reads_fnFs)
+names(reads_fnRs)
+names(reads_fnFs_paired)
+names(reads_fnRs_paired)
+
+reads_fnFs[6]
+reads_fnRs[6]
+reads_fnFs_paired[6]
+reads_fnRs_paired[6]
+
+
+reads_fnFs[92]
+reads_fnFs_paired[92]
+reads_fnRs[92]
+reads_fnRs_paired[92]
+
+
+reads_fnFs %>% file.exists()
+reads_fnFs_paired %>% file.exists()
+reads_fnRs %>% file.exists()
+reads_fnRs_paired %>% file.exists()
+
+
+reads_fnFs[!reads_fnFs %>% file.exists()]
+reads_fnRs[!reads_fnRs %>% file.exists()]
+
+
+# Repairing in parallell ----
+
+
+##############Function to repair and filter reads after demultiplexing (from CDI or not)
+
+
+
+repairNfilt_with_DADA2 <- function(Unique_File_name,
+                                   FWD_R1,
+                                   FWD_R2,
+                                   FWD_R1_paired,
+                                   FWD_R2_paired,
+                                   REV_R1,
+                                   REV_R2,
+                                   REV_R1_paired,
+                                   REV_R2_paired){
+  #FWD oriented amplicon
+  
+  
+    
+  
+  
+all_filtered_out <- as_tibble()
+
+  
+  if(file.exists(FWD_R1)){
+
+    print(paste0("Working on file: ",sample_idx_tbl_wide$Unique_File_name))
+    print(paste0("      FWD orientation"))
+
+    sample_filtered_out_FWD <- as_tibble()
+
+    sample_filtered_out_FWD <- dada2::filterAndTrim(
+      fwd = FWD_R1,
+      filt = FWD_R1_paired,
+      rev = FWD_R2,
+      filt.rev = FWD_R2_paired,
+      maxN = c(0,0),
+      maxEE = c(30,30),
+      multithread = T,
+      matchIDs = TRUE,
+      rm.phix = TRUE,
+      compress = TRUE,
+      minLen = 30,
+      verbose = TRUE)
+
+    sample_filtered_out_FWD <- sample_filtered_out_FWD %>%
+      as_tibble() %>%
+      mutate("Unique_File_name" = Unique_File_name,
+             "Orientation" = "FWD")
+    }
+
+#REV oriented amplicon
+  if(file.exists(REV_R1)){
+
+    print(paste0("      REV orientation"))
+
+    sample_filtered_out_REV <- as_tibble()
+
+    sample_filtered_out_REV <- dada2::filterAndTrim(
+      fwd = REV_R1,
+      filt = REV_R1_paired,
+      rev = REV_R2,
+      filt.rev = REV_R2_paired,
+      maxN = c(0,0),
+      maxEE = c(30,30),
+      multithread = T,
+      matchIDs = TRUE,
+      rm.phix = TRUE,
+      compress = TRUE,
+      minLen = 30,
+      verbose = TRUE)
+
+    sample_filtered_out_REV <- sample_filtered_out_REV %>%
+      as_tibble() %>%
+      mutate("Unique_File_name" = Unique_File_name,
+             "Orientation" = "REV")
+    
+    
+    all_filtered_out <- bind_rows(all_filtered_out,sample_filtered_out_FWD,sample_filtered_out_REV)
+    
+
+  }else{
+
+    print(paste0("-------- it has no REV oriented files"))
+
+  }
+
+  all_filtered_out <- bind_rows(all_filtered_out,sample_filtered_out_FWD)
+  
+  return(all_filtered_out)
+}
+
+all_filtered_out
+
+
+#using the function ----
+
+
+# all_filtered_out <- as_tibble()
+
+
+
+# Versões paralelas
+cores_to_be_used <- future::availableCores() - 2 # Usar todos os cores -2 = 78
+future::plan(future::multisession(workers = cores_to_be_used))
+
+
+#
+# find_otu(ASV_header = asvs_abd$`ASV header abd`[30],
+#          clusters_swarm = swarm_clust)
+
+
+
+
+tictoc::tic()
+all_filtered_out_fun <- repairNfilt_with_DADA2(Unique_File_name = sample_idx_tbl_wide$Unique_File_name,
+                                              FWD_R1 = sample_idx_tbl_wide$FWD_R1,
+                                              FWD_R2 = sample_idx_tbl_wide$FWD_R2,
+                                              FWD_R1_paired = sample_idx_tbl_wide$FWD_R1_paired,
+                                              FWD_R2_paired = sample_idx_tbl_wide$FWD_R2_paired,
+                                              REV_R1 = sample_idx_tbl_wide$REV_R1,
+                                              REV_R2 = sample_idx_tbl_wide$REV_R2,
+                                              REV_R1_paired = sample_idx_tbl_wide$REV_R1_paired,
+                                              REV_R2_paired = sample_idx_tbl_wide$REV_R2_paired)
+
+
+tictoc::toc()
+
+   # 
+# 
+# all_filtered_out_fun <- furrr::future_map_dfr(.x = sample_idx_tbl_wide[1:10],
+#                                               .f = repairNfilt_with_DADA2,
+#                                               Unique_File_name = .$Unique_File_name,
+#                                               FWD_R1 = .$FWD_R1,
+#                                               FWD_R2 = .$FWD_R2,
+#                                               FWD_R1_paired = .$FWD_R1_paired,
+#                                               FWD_R2_paired = .$FWD_R2_paired,
+#                                               REV_R1 = .$REV_R1,
+#                                               REV_R2 = .$REV_R2,
+#                                               REV_R1_paired = .$REV_R1_paired,
+#                                               REV_R2_paired = .$REV_R2_paired,
+#                                               .options = furrr::furrr_options(seed = NULL))
+# 
+# 
+
+
+
+# ----
+
+
+all_filtered_out <- all_filtered_out_fun %>% 
+  mutate(prop = round((reads.out/reads.in*100),digits = 2)) %>% 
+  dplyr::rename("Raw reads" = "reads.in",
+         "Paired reads"  = "reads.out",
+          "Proportion" = "prop")
+
+
+all_filtered_out$Unique_File_name %>% unique()
+
+
+all_filtered_out_wide <- all_filtered_out %>% pivot_wider(id_cols = Unique_File_name,
+                                                          names_from = Orientation,
+                                                          values_from = c(`Raw reads`, `Paired reads`,Proportion), 
+                                                          values_fn = list) %>% 
+  unnest(cols = everything() ) %>% 
+  unique() %>% 
+  dplyr::rename("Raw reads (FWD pairs)" = "Raw reads_FWD",
+         "Paired reads (FWD pairs)" = "Paired reads_FWD")
+
+all_filtered_out_wide$Unique_File_name %>% unique()
+
+
+
+
+all_filtered_out_wide$Unique_File_name[!all_filtered_out_wide$Unique_File_name %in%( all_filtered_out$Unique_File_name %>% unique())]
+
+all_filtered_out_wide$Unique_File_name[all_filtered_out_wide$Unique_File_name %>% duplicated()]
+
+
+
+base::save.image(paste0(analysis_path,"/",prjct_rad,"-env_",Sys.Date(),"_paired.RData"))
+```
+<br>
+
+
+### Identify file name names radicals
+
+Here we set the raw reads files  and the .csv table containing the informations about sample name, primers, indexes, controls and any other metadata, such as local of collection, sampling dates, replicates, volume, weather conditions, etc. 
+
+This table must have the columns **Sample**, **Primer** and **Unique_File_name**. This last one must identify uniquely the samples, withe the prefix radicals correspondent to their respective R1 and R2 read files.
+
+
+```r
+primers_n_samples %>% arrange(Primer,File_name) %>% pull(Unique_File_name) %>% paste0(collapse = '","') %>% cat()
+primers_n_samples$Unique_File_name %>% paste0(collapse = '","') %>% cat()
+
+#organize sample names
+{
+# sample_levels <- c(primers_n_samples$Unique_File_name)
+sample_levels <- c(primers_n_samples$Unique_File_name)
+# sample_levels <- c()
+duplicated(sample_levels) %>% sum()
+}
+```
+
+<br>
+
+### 
+
+We will now create, from the samples table, another table to organize reads files and samples, with columns pointing to the reads files at every step of quality control and filtering. 
+
+
+```r
+# 3 - Map sample names to reads files ----
+
+sample_idx_tbl_wide %>% colnames()
+
+sample_idx_tbl <- sample_idx_tbl_wide %>% 
+  pivot_longer(cols = c(
+    "FWD_R1", "FWD_R2", "REV_R1", "REV_R2", "FWD_R1_paired", "FWD_R2_paired", "REV_R1_paired", "REV_R2_paired"),
+               names_to = "Stage",
+               values_to = "Read file")
+
+
+
+sample_idx_tbl$`Read file` %>% unique() %>% sort()
+```
+
+<br>
+
+#### Identify primers on the original sequences
+
+
+```r
+#1 - identify primers ----
+
+sample_idx_tbl$Primer %>% unique()
+
+#primers sequences used for each sample
+
+#              inosine pairs with A, C, U
+#                               T, G, A = IUPAC code:  D
+#              cutadapt  accepts IUPAC code !!!!!!!!
+#        https://www.bioinformatics.org/sms/iupac.html
+
+# Name primers: XXXxxXXXX_FWD or XXXxx-XXXX_REV
+
+{
+#COIr1 ----
+# COIr1_FWD <- "TCHACHAAYCAYAARGAYATYGG" #MG2-LCO1490_F
+# names(COIr1_FWD) <- "COIr1_FWD"
+# COIr1_REV <- "ACYATRAARAARATYATDAYRAADGCRTG"    #MG2-univ-R1
+# names(COIr1_REV) <- "COIr1_REV"
+# 
+# #COIr2 ----
+# COIr2_FWD <- "TCHACHAAYCAYAARGAYATYGG" #MG2-LCO1490_F
+# names(COIr2_FWD) <- "COIr2_FWD"
+# COIr2_REV <- "ARTCARTTWCCRAAHCCHCC"    #fwhR1_R2
+# names(COIr2_REV) <- "COIr2_REV"
+# COIr2b_REV <- "AYNARTCARTTHCCRAAHCC"   #CO1-CFMR-dege_R3
+# names(COIr2b_REV) <- "COIr2b_REV"
+
+
+# ARTCARTTWCCRAAHCCHCC
+# AYNARTCARTTHCCRAAHCC
+# 
+# 
+# 
+# 
+# TM primers ----
+# # #p16S ----
+# p16S_FWD <- "CCTAYBBBRBGCASCAG"
+# names(p16S_FWD) <- "p16S_FWD"
+# p16S_REV <- "GGACTACNNGGGTATCTAAT"
+# names(p16S_REV) <- "p16S_REV"
+
+# # #pITS ----
+# pITS_FWD <- "CTTGGTCATTTAGAGGAAGTAA"
+# names(pITS_FWD) <- "pITS_FWD"
+# pITS_REV <- "GCTGCGTTCTTCATCGATGC"
+# names(pITS_REV) <- "pITS_REV"
+# # 
+# 
+# 
+
+# # #NeoFish ----
+# neo_FWD <- "CGCCGTCGCAAGCTTACCCT"
+# names(neo_FWD) <- "neo_FWD"
+# neo_REV <- "AGTGACGGGCGGTGTGTGC"
+# names(neo_REV) <- "neo_REV"
+# 
+#12S-MiBird ----
+mBir_FWD <- "GGGTTGGTAAATCTTGTGCCAGC"
+names(mBir_FWD) <- "mBir_FWD"
+mBir_REV <- "CATAGTGGGGTATCTAATCCCAGTTTG"
+names(mBir_REV) <- "mBir_REV"
+# 
+# #16S-Taylor ----
+# taylor_FWD <- "TGCATCGGTTGGGGTGACCTCGGA"
+# taylor_FWD <- "CGGTTGGGGTGACCTCGGA"
+# names(taylor_FWD) <- "taylor_FWD"
+# # taylor_REV <- "TGCATGCTGTTATCCCTAGGGTAACT"
+# taylor_REV <- "GCTGTTATCCCTAGGGTAACT"
+# names(taylor_REV) <- "taylor_REV"
+
+# #fwh2 (COI) ----
+# fwh2_FWD <- "GGDACWGGWTGAACWGT"
+# names(fwh2_FWD) <- "fwh2_FWD"
+# fwh2_REV <- "GTRATWGCHCCDGCTARWACWGG"
+# names(fwh2_REV) <- "fwh2_REV"
+
+#MiFish ----
+
+
+# for i in `ls EM126*`; do zcat ${i} | grep -c "GTCGGTAAAACTCGTCCAGC"; done
+# for i in `ls EM126*`; do zcat ${i} | grep -c "GTCGGTAAAACTCGTGCCAGC"; done
+# for i in `ls EM126*`; do zcat ${i} | grep -c "TGCATCATAGTGGGGTATCTAATCCCAGTTG"; done
+# for i in `ls EM126*`; do zcat ${i} | grep -c "CATAGTGGGGTATCTAATCCCAGTTTG"; done
+# for i in `ls EM126*`; do zcat ${i} | grep -c "CATAGTGGGGTATCTAATCCCAGTTG"; done
+
+
+# MiFish_FWD <-     "GTCGGTAAAACTCGTCCAGC"
+MiFish_FWD <-   "GTCGGTAAAACTCGTGCCAGC" # versão Ecomol Paranaíba e MiFish RJ & SP e Juliana q tem um G a mais no meio ????
+names(MiFish_FWD) <- "MiFish_FWD"
+# # # MiFish_REV <-  "TGCATCATAGTGGGGTATCTAATCCCAGTTG"
+MiFish_REV <-     "CATAGTGGGGTATCTAATCCCAGTTTG" # versão Ecomol Paranaíba e MiFish RJ & SP e Juliana
+# # MiFish_REV <-   "CATAGTGGGGTATCTAATCCCAGTTG" #versão reduzida
+names(MiFish_REV) <- "MiFish_REV"
+#  
+# #COI-1 ----
+# C1_FWD <- "GGWACWGGWTGAACWGTWTAYCCYCC"
+# names(C1_FWD) <- "C1_FWD"
+# # C1_REV <- "TAIACYTCIGGRTGICCRAARAAYCA"
+# C1_REV <-   "TADACYTCDGGRTGDCCRAARAAYCA"
+# names(C1_REV) <- "C1_REV"
+# 
+# #COI-3 ----
+# C3_FWD <- "ACYAAICAYAAAGAYATIGGCAC"
+# C3_FWD <-   "ACYAADCAYAAAGAYATDGGCAC"
+# names(C3_FWD) <- "C3_FWD"
+# # C3_REV <- "CTTATRTTRTTTATICGIGGRAAIGC"
+# C3_REV <-   "CTTATRTTRTTTATDCGDGGRAADGC"
+# names(C3_REV) <- "C3_REV"
+# 
+# #COI-Inseto ----
+# CI_FWD <- "GGTACATTCAACCAATCATAAAGATATTGG"
+# names(CI_FWD) <- "CI_FWD"
+# CI_REV <- "GGGTACCGTGGAAAWGCTATATCWGGTG"
+# names(CI_REV) <- "CI_REV"
+# 
+# #COI-Lep (quase igual COI-Inseto) ----
+# Clep_FWD <- "ATTCAACCAATCATAAAGATATTGG"
+# names(Clep_FWD) <- "Clep_FWD"
+# Clep_REV <- "CGTGGAAAWGCTATATCWGGTG"
+# names(Clep_REV) <- "Clep_REV" 
+
+# MiMammal-U-12S ----
+  #                  https://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-11-434/tables/1
+mmu_FWD <- "GGGTTGGTAAATTTCGTGCCAGC"
+names(mmu_FWD) <- "mmu_FWD"
+mmu_REV <- "CATAGTGGGGTATCTAATCCCAGTTTG"
+names(mmu_REV) <- "mmu_REV"
+
+# #Elas02 ----
+# Elasm02_FWD <- "GTTGGTHAATCTCGTGCCAGC"
+# names(Elasm02_FWD) <- "Elasm02_FWD"
+# Elasm02_REV <- "CATAGTAGGGTATCTAATCCTAGTTTG"
+# names(Elasm02_REV) <- "Elasm02_REV"
+# 
+# #Fish1 ----
+# Fish1_F <- "TCAACCAACCACAAAGACATTGGCAC"
+# names(Fish1_F) <- "Fish1_F"
+# Fish1_R <- "TAGACTTCTGGGTGGCCAAAGAATCA"
+# names(Fish1_R) <- "Fish1_R"
+# # 
+# #Fish2 ----
+# Fish2_F <- "TCGACTAATCATAAAGATATCGGCAC"
+# names(Fish2_F) <- "Fish2_F"
+# Fish2_R <- "ACTTCAGGGTGACCGAAGAATCAGAA"
+# names(Fish2_R) <- "Fish2_R"
+# # 
+# # #VF2_FR1d ----
+# VF2_FR1d_F  <- "CAACCAACCACAAAGACATTGGCAC"
+# names(VF2_FR1d_F) <- "VF2_FR1d_F"
+# VF2_FR1d_R <- "ACCTCAGGGTGTCCGAARAAYCARAA"
+# names(VF2_FR1d_R) <- "VF2_FR1d_R"
+
+# # 12S Vertebrados ----
+  ################################### zgrep -c "TTAGATACCCCACTATGC" *V5*gz
+p12SV5_FWD <- "TTAGATACCCCACTATGC" # sempre conferir onde o FWD está sendo encontrado
+names(p12SV5_FWD) <- "p12SV5_FWD"
+p12SV5_REV <- "TAGAACAGGCTCCTCTAG"
+names(p12SV5_REV) <- "p12SV5_REV"
+    #https://academic.oup.com/nar/article/39/21/e145/1105558?login=true   ORIGINAL Riaz et al. 2011, tb está trocado FWD REV
+    #https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.13485    #neste o 12SV5 está trocado FWD REV
+
+# 
+# #trnL (UAA) - Plantas  ----
+# trnLg_F <- "GGGCAATCCTGAGCCAA"
+# names(trnLg_F) <- "trnLg_F"
+# trnLh_R <- "CCATTGAGTCTCTGCACCTATC"
+# names(trnLh_R) <- "trnLh_R"
+
+#Mini_SH_E  (Mistura do COI-3-fwd com o MiFish-rev) ----
+# Mini_SH_E_F <- "ACYAAICAYAAAGAYATIGGCAC"
+# Mini_SH_E_F <- "ACYAADCAYAAAGAYATDGGCAC"
+# names(Mini_SH_E_F) <- "Mini_SH_E_F"
+# Mini_SH_E_R <- "CATAGTGGGGTATCTAATCCCAGTTG"
+# names(Mini_SH_E_R) <- "Mini_SH_E_R"
+# 
+# #16S MAV - Invertebrados  ----
+# p16SMAV_F <- "CCAACATCGAGGTCRYAA"
+# names(p16SMAV_F) <- "p16SMAV_F"
+# p16SMAV_R <- "ARTTACYNTAGGGATAACAG"
+# names(p16SMAV_R) <- "p16SMAV_R"
+# 
+# #COI_minibar ----
+# minibar_F1 <- "TCCACTAATCACAARGATATTGGTAC"
+# names(minibar_F1) <- "minibar_F1"
+# minibar_R1 <- "GAAAATCATAATGAAGGCATGAGC"
+# names(minibar_R1) <- "minibar_R1"
+# # 
+# # #COI-ZBJ-Art ----
+# # COIZBJart_F1c
+# COIZBJart_FWD <- "AGATATTGGAACWTTATATTTTATTTTTGG"
+# names(COIZBJart_FWD) <- "COIZBJart_FWD"
+# # COIZBJart_R2c
+# COIZBJart_REV <- "WACTAATCAATTWCCAAATCCTCC"
+# names(COIZBJart_REV) <- "COIZBJart_REV"
+# # 
+# # #Mini COI ----
+miniCOI_FWD <- "ATCACCACTATTGTTAATATAAAACCC"
+names(miniCOI_FWD) <- "miniCOI_FWD"
+miniCOI_REV <- "TAAACCTCAGGATGTCCGAAGAATCA"
+names(miniCOI_REV) <- "miniCOI_REV"
+
+
+ # creates a list of single row tibbles for each primer ----
+primers <- tibble("Primer seq" = c(
+  # neo_FWD, neo_REV,
+  # taylor_FWD, taylor_REV,
+  mBir_FWD, mBir_REV,
+  MiFish_FWD, MiFish_REV,
+  # p16S_FWD,pITS_FWD,
+  # p16S_REV,pITS_REV
+  # ,
+  # C1_FWD, C1_REV,
+  # C3_FWD, C3_REV,
+  # CI_FWD, CI_REV,
+  # Clep_FWD, Clep_REV,
+  mmu_FWD, mmu_REV,
+  # Elasm02_FWD, Elasm02_REV,
+  # Fish1_F, Fish1_R,
+  # Fish2_F, Fish2_R,
+  # VF2_FR1d_F, VF2_FR1d_R,
+  # ,
+  p12SV5_FWD, p12SV5_REV,
+  # fwh2_FWD,fwh2_REV,
+  # COIr1_FWD, COIr1_REV
+  # ,
+  # COIr2_FWD, COIr2_REV, COIr2b_REV,
+  # trnLg_F, trnLh_R,
+  # Mini_SH_E_F, Mini_SH_E_R,
+  # p16SMAV_F, p16SMAV_R,
+  # minibar_F1, minibar_R1,
+  # COIZBJart_FWD, COIZBJart_REV
+  miniCOI_FWD, miniCOI_REV
+)) %>% 
+  mutate(`Primer name`= names(`Primer seq`)) %>% 
+  split(1:nrow(.)) 
+}
+
+
+primers
+```
+
+<br>
+
+#### Generate sequences for complement, reverse and reverse complement of each primer
+
+The function _allOrients_ is used to generate all possible orientations for primers FWD e REV.
+
+
+```r
+# 1 - generate all possible primer orientations ----
+
+#function to get all possible primer orientations ----
+allOrients <- function(primers) {
+   # Create all orientations of the input sequence
+    # Must be a tibble with cols = c(Primers,`Primer name`)
+  
+   require(Biostrings)
+   dna <- Biostrings::DNAString(primers$`Primer seq`)  # The Biostrings works w/ DNAString objects rather than character vectors
+   orients <- c(Forward = dna, 
+                Complement = Biostrings::complement(dna), 
+                Reverse = Biostrings::reverse(dna),
+                RevComp = Biostrings::reverseComplement(dna))
+   names(orients) <- paste0(names(orients))
+   
+   primer_tbl <- sapply(orients, toString)
+   
+   primer_tbl <- tibble(Sequence = primer_tbl,
+                        `Primer orientation` = names(primer_tbl)) %>% 
+     dplyr::mutate(`Primer` = primers$`Primer name`) %>%
+     tidyr::unite(col=`Orientation name`, `Primer` ,`Primer orientation`,remove = FALSE)
+   
+   # %>% 
+   #   tidyr::pivot_wider( names_from = `Primer orientation`,values_from = Sequence)
+   
+   return(primer_tbl)  # Convert back to character vector
+}
+
+
+
+# 2 - Apply function to generate table with all primers orientations possible
+primers_all_orients <- purrr::map_dfr(primers, allOrients)
+
+#name the sequences accordingly
+names(primers_all_orients$Sequence) <- primers_all_orients$`Orientation name`
+
+
+
+primers_all_orients <- primers_all_orients %>% mutate(`Primer pair` = str_remove_all(string = Primer,
+                                                              pattern = "_.*.$"))
+
+#check naming
+primers_all_orients$Sequence
+```
+
+
+
+
+
+
+<br>
+
+#### Count primer presence on reads
+
+Before primer removal it is possible to count their presence on the reads. This procedures is carried on independently for each sample. The following example applies to the first samples of each primer sample set.
+
+
+```r
+# 1 - prepare to count primer orientation hits ----
+
+# 1a - Load required functions ----
+#function to count primer on each specific library
+primerHits <- function(primer, fn) {
+   # Counts number of reads in which the primer is found
+   nhits <- Biostrings::vcountPattern(primer, ShortRead::sread(ShortRead::readFastq(fn)), fixed = FALSE,
+                                      max.mismatch = 1)
+   return(sum(nhits > 0))
+}
+
+#function to call primerHits for multiple primers
+multi_primerHits <- function(Read_file,primers){
+  primer_counts <- purrr::map_df(primers,.f = primerHits, 
+                                 fn = Read_file)
+  primer_counts <- primer_counts %>%  mutate(`Read file` = Read_file)
+  return(primer_counts)
+}
+
+
+sample_idx_tbl$Stage %>% unique()
+
+
+# 2b - Create vector of read files to look on for primers ----
+reads_seqs <- sample_idx_tbl %>% 
+  filter(Stage %in% c("FWD_R1_paired", "FWD_R2_paired")) %>% 
+  dplyr::select(`Read file`) %>% as.list()
+
+
+reads_seqs %>% lengths()
+
+
+# 2c - named vector of primer sequences ----
+primers_seqs <- primers_all_orients$Sequence
+
+# 2d - Set up for parallel searching ----
+cores_to_be_used <- future::availableCores() - 2 # Usar todos os cores -2 = 78
+
+future::plan(future::multisession(workers = cores_to_be_used))
+
+# 3 - Count primers on reads ----
+primers_in_Nreads <- furrr::future_map_dfr(reads_seqs$`Read file`, .f = multi_primerHits, primers = primers_seqs, .options = furrr::furrr_options(seed = NULL))
+
+# 4 - identify which primers were found on most reeads ----
+dim(primers_in_Nreads)
+
+colSums(primers_in_Nreads[,1:length(primers_seqs)]) %>% sort()
+
+# 5 - Save primers in N-cleaned-reads complete table (if desired)
+
+# primers_in_Nreads_bckp <- primers_in_Nreads
+
+
+write.csv(x = primers_in_Nreads, file = paste0(results_path,"/",prjct_rad,"-primers_found_in_reads.csv"))
+
+# 6- Remove columns(primers) not found in any sample
+
+#Identify empty counts
+colnames(primers_in_Nreads) #choose only numeric columns (primer counts)
+colnames(primers_in_Nreads[1:length(primers_seqs)]) #choose only numeric columns (primer counts)
+colSums(primers_in_Nreads[1:length(primers_seqs)]) # dá pra excluir do plot se tiver zero counts
+(colSums(primers_in_Nreads[1:length(primers_seqs)]) == 0)#transformando em um vetor logico
+colnames(primers_in_Nreads)[(colSums(primers_in_Nreads[1:length(primers_seqs)]) != 0)]#transformando em um vetor logico
+
+
+# 
+
+
+
+
+# primers_in_Nreads <- primers_in_Nreads[,c((colSums(primers_in_Nreads[1:72]) != 0),TRUE),] # dá pra excluir do plot se tiver zero counts
+
+colnames(primers_in_Nreads)
+
+#get sample information into primers_in_Nreads table
+primers_in_Nreads <- left_join(primers_in_Nreads,sample_idx_tbl,by = "Read file") %>% 
+  mutate(Read = if_else((str_detect(Stage,
+                                    pattern = "R1")),
+                        "R1",
+                        "R2")) %>% 
+  # mutate(Unique_File_name = factor(Unique_File_name,levels = sample_levels)) %>%
+  unite(col = "Unique_File_name_Read", sep = " ", remove = FALSE,
+        Unique_File_name,Read) 
+
+# count numbers of reads in original RAW files
+
+primers_in_Nreads <- primers_in_Nreads %>% 
+  mutate(`Total reads` =  ShortRead::countFastq(dirPath = .$`Read file`)[,1])
+
+
+#7- prepare primer counts for plots ----
+
+rownames(primers_in_Nreads) <- primers_in_Nreads$Unique_File_name_Read
+
+primers_in_Nreads$`Read file`
+```
+
+#### Plot primers identified in each library
+
+
+```r
+#8 - prepare primer counts for plots in ggplot----
+
+primers_all_orients$`Orientation name`
+
+
+primers_in_Nreads %>% colnames() %>%  paste0(collapse = '",\n') %>% cat()
+
+#convert primer hits table to long format
+primers_in_Nreads_long <- primers_in_Nreads %>% 
+  gather(key = Sequences, 
+         value = Count, 
+         # Fish1_F_Forward,
+         # Fish1_F_Complement,
+         # Fish1_F_Reverse,
+         # Fish1_F_RevComp,
+         # Fish1_R_Forward,
+         # Fish1_R_Complement,
+         # Fish1_R_Reverse,
+         # Fish1_R_RevComp,
+         # Fish2_F_Forward,
+         # Fish2_F_Complement,
+         # Fish2_F_Reverse,
+         # Fish2_F_RevComp,
+         # Fish2_R_Forward,
+         # Fish2_R_Complement,
+         # Fish2_R_Reverse,
+         # Fish2_R_RevComp,
+         # VF2_FR1d_F_Forward,
+         # VF2_FR1d_F_Complement, 
+         # VF2_FR1d_F_Reverse,
+         # VF2_FR1d_F_RevComp,
+         # VF2_FR1d_R_Forward,
+         # VF2_FR1d_R_Complement, 
+         # VF2_FR1d_R_Reverse,
+         # VF2_FR1d_R_RevComp,
+         MiFish_FWD_Forward,
+         # MiFish_FWD_Complement, 
+         # MiFish_FWD_Reverse,
+         MiFish_FWD_RevComp,
+         MiFish_REV_Forward,
+         # MiFish_REV_Complement,
+         # MiFish_REV_Reverse,
+         MiFish_REV_RevComp,
+         mBir_FWD_Forward,
+         # mBir_FWD_Complement, 
+         # mBir_FWD_Reverse, 
+         mBir_FWD_RevComp,
+         mBir_REV_Forward,
+         # mBir_REV_Complement, 
+         # mBir_REV_Reverse, 
+         mBir_REV_RevComp,
+         mmu_FWD_Forward,
+         # mmu_FWD_Complement, 
+         # mmu_FWD_Reverse, 
+         mmu_FWD_RevComp,
+         mmu_REV_Forward,
+         # mmu_REV_Complement, 
+         # mmu_REV_Reverse, 
+         mmu_REV_RevComp,
+         # p16S_FWD_Forward,
+         # #p16S_FWD_Complement, 
+         # #p16S_FWD_Reverse, 
+         # p16S_FWD_RevComp, 
+         # # pITS_FWD_Forward, 
+         # #pITS_FWD_Complement, 
+         # #pITS_FWD_Reverse, 
+         # pITS_FWD_RevComp, 
+         # # p16S_REV_Forward, 
+         # #p16S_REV_Complement, 
+         # #p16S_REV_Reverse, 
+         # p16S_REV_RevComp, 
+         # # pITS_REV_Forward, 
+         # #pITS_REV_Complement, 
+         # #pITS_REV_Reverse, 
+         # pITS_REV_RevComp
+         # taylor_FWD_Forward,
+         # taylor_FWD_Complement, 
+         # taylor_FWD_Reverse, 
+         # taylor_FWD_RevComp,
+         # taylor_REV_Forward,
+         # taylor_REV_Complement, 
+         # taylor_REV_Reverse, 
+         # taylor_REV_RevComp,
+         p12SV5_FWD_Forward,
+         #p12SV5_FWD_Complement, 
+         #p12SV5_FWD_Reverse, 
+         p12SV5_FWD_RevComp,
+         p12SV5_REV_Forward,
+         #p12SV5_REV_Complement, 
+         #p12SV5_REV_Reverse, 
+         p12SV5_REV_RevComp,
+         # miniCOI_FWD_Forward,
+         #miniCOI_FWD_Complement, 
+         #miniCOI_FWD_Reverse, 
+         # miniCOI_FWD_RevComp,
+         # miniCOI_REV_Forward,
+         #miniCOI_REV_Complement, 
+         #miniCOI_REV_Reverse, 
+         # miniCOI_REV_RevComp,
+         # COIr1_FWD_Forward,
+         # #COIr1_FWD_Complement,
+         # #COIr1_FWD_Reverse,
+         # COIr1_FWD_RevComp,
+         # COIr1_REV_Forward,
+         # #COIr1_REV_Complement,
+         # #COIr1_REV_Reverse,
+         # COIr1_REV_RevComp,
+         # fwh2_FWD_Forward,
+         # #fwh2_FWD_Complement,
+         # #fwh2_FWD_Reverse,
+         # fwh2_FWD_RevComp,
+         # fwh2_REV_Forward,
+         # #fwh2_REV_Complement,
+         # #fwh2_REV_Reverse,
+         # fwh2_REV_RevComp
+                  ) %>% 
+  mutate(Sequences = as.factor(Sequences),
+         Unique_File_name = factor(Unique_File_name,levels = sample_levels)) %>% 
+  dplyr::select(-c("Read file","Stage")) %>% 
+  select(where(function(x) any(!is.na(x)))) %>% 
+  filter(Count != 0) 
+  
+
+
+
+
+
+# PLOT 1: primers counts in readstile plot - only primers FWD & REV, foward & revcomp ----
+
+options(scipen=10000)
+
+library(viridis)
+library(ggh4x)
+
+#create levels for Files display on plot
+Unique_File_name_Read_levels <- primers_in_Nreads_long$Unique_File_name_Read %>% unique()
+
+# #create levels for Primers display on plot
+# primers_levels <- c(
+#   "MiFish_FWD_Forward","MiFish_REV_Forward",
+#                     "MiFish_FWD_Complement",  "MiFish_REV_Complement",
+#                     "MiFish_FWD_Reverse",  "MiFish_REV_Reverse",
+#                     "MiFish_FWD_RevComp",  "MiFish_REV_RevComp"
+#   # ,
+#   #                   "COIr1_FWD_Forward","COIr1_REV_Forward",
+#   #                   "COIr1_FWD_Complement",  "COIr1_REV_Complement",
+#   #                   "COIr1_FWD_Reverse",  "COIr1_REV_Reverse",
+#   #                   "COIr1_FWD_RevComp",  "COIr1_REV_RevComp"
+#   )
+
+
+# defining all separate projects to plot 
+all_projects <- unique(primers_in_Nreads_long$Project) %>% 
+  str_split(pattern = ";",simplify = F) %>% 
+  unlist() %>% 
+  unique()
+
+
+for (project in all_projects) {
+
+# project <- "Rio das Velhas"
+
+project_name <- project %>% str_replace_all(pattern = " ",
+                                        replacement = "_")
+
+  
+N_samples <-   primers_in_Nreads_long %>%
+  filter(str_detect(string = Project, pattern = project)) %>% 
+  pull(Unique_File_name_Read) %>% unique() %>% length()
+
+primers_tile <- primers_in_Nreads_long %>%
+  filter(Project %in% project) %>% 
+  # ggplot2::ggplot(aes(y = interaction(Unique_File_name,Read,sep = " - "),
+  ggplot2::ggplot(aes(y = Unique_File_name_Read,
+  # ggplot2::ggplot(aes(y = interaction(Sample,Sample,sep = " - "),
+                      x = Sequences,
+                      fill = (Count/`Total reads`*100),
+                      group =`Primer`,alpha = 0.05)) +
+  geom_tile(aes(col = `Primer`), 
+            linewidth = 0.05, 
+            linetype = 2)+
+  geom_text(aes(label = Count),
+            size=1)+
+  scale_fill_gradientn(name = "Proportion of reads\n     with primer (%)",
+                       colours = c("white","red","yellow","green","dark green"),
+                       values = c(0,1),
+                       na.value ="white") +
+  # scale_colour_manual(values = c("#233fdb","#ff3455","#2c9400")) +
+  # scale_colour_manual(values = viridis::turbo(n = length(unique(primers_in_Nreads_long$Sequences))/8)) +
+  guides(color = guide_legend(override.aes = list(fill = "white", 
+                                                  size = 10))) +
+  theme_light(base_line_size = 0.025,
+              base_size = 6) +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1)) + 
+  geom_vline(xintercept = c(4.5,8.5,12.5,16.5,20.5,24.5),color = "black") +
+  xlab("Primers") +
+  ylab("Amostra") +
+  scale_y_discrete(limits=rev) +
+  ggtitle(label = paste0("Ecomol - ",prjct_rad, " - ", project),
+              subtitle = "Presença de primers nas amostras:\n    intensidade de cor relativa à contagem do respectivo primer no conjunto de reads\n(max. mismatch = 1)") +
+  theme(strip.text.y = element_text(size = 10),
+        plot.title = element_text(size=10),
+        plot.subtitle = element_text(size=6),
+        axis.text.x = element_text(size=6),
+        legend.text= element_text(size=5),
+        legend.title = element_text(size=7))+ scale_alpha(guide = 'none') +
+  # facet_grid(rows = vars(Researcher,Primer),
+  facet_grid(rows = vars(Primer),
+             scales = "free",
+             space = "free")
+
+primers_tile
+
+
+# ggsave(file = paste0(figs_path,"/",prjct_rad,"-primers_found_in_reads_1e.pdf"),
+ggsave(file = paste0(figs_path,"/",project_name,"-primers_found_in_reads_1e.pdf"),
+     plot = primers_tile,
+     device = "pdf",
+     width = 20,
+     height = max(N_samples/5,6),
+     units = "cm",
+     dpi = 300)
+
+}
+
+
+
+
+#once generated, it is necessary to check if the FWD and REV primers orientation is correct.
+#   if not, change the script as in:    https://benjjneb.github.io/dada2/ITS_workflow.html
+
+# As expected, the FWD primer is found in the forward reads in its forward orientation,
+#    and in some of the reverse reads in its reverse-complement orientation
+#    (due to read-through when the ITS region is short).
+# Similarly the REV primer is found with its expected orientations.
+#
+# Note: Orientation mixups are a common trip-up. If, for example,
+#    the REV primer is matching the Reverse reads in its RevComp orientation,
+#    then replace REV with its reverse-complement orientation
+# (REV <- REV.orient[["RevComp"]]) before proceeding.
+```
+
+#### Primer removal with **_Cutadapt_** 
+
+The **_cutadapt_** software ([DOI:10.14806/ej.17.1.200](http://journal.embnet.org/index.php/embnetjournal/article/view/200)) was used for primer removal on read sequences.
+
+
+#### Generate and execute primer-specific commands
+
+
+```r
+# optional: remove all primers from all reads and samples ----
+
+sample_idx_tbl$Stage %>% unique()
+sample_idx_tbl$`Read file` %>% unique()
+#10 - map sample names to cutadapt reads files ----
+
+#name outputs
+cutadapt_files <- sample_idx_tbl %>% 
+  filter(Stage %in% c("FWD_R1_paired", "FWD_R2_paired")) %>% 
+  # mutate(`Read file` = str_replace_all(.$`Read file`,pattern = "N-cleaned|Ncleaned",replacement = "cutadapt")) %>% 
+  mutate(`Read file` = str_replace_all(.$`Read file`,pattern = "/paired/",replacement = "/cutadapt/")) %>% 
+  mutate(`Read file` = str_replace_all(.$`Read file`,pattern = "FWD_R1|FWD_R2",replacement = "cutadapt")) %>% 
+  mutate(Stage = str_replace_all(.$Stage,pattern = "_paired",replacement = "_cutadapt")) 
+
+
+
+cutadapt_files$`Read file` %>% unique()
+
+
+
+sample_idx_tbl <- bind_rows(sample_idx_tbl,cutadapt_files)
+
+names(sample_idx_tbl$`Read file`) <- sample_idx_tbl$Unique_File_name
+
+#names of the primers that were found in reads 
+(colSums(primers_in_Nreads[1:length(primers_seqs)]) == 0)
+colnames(primers_in_Nreads[1:length(primers_seqs)])[(colSums(primers_in_Nreads[1:8]) != 0)] # only primer counts cols
+(colnames(primers_in_Nreads[1:length(primers_seqs)]))
+
+ 
+ 
+#create cutadapt flags from identified primers
+#all -----
+  primers_all_orients$Primer %>% unique()
+#remove primers and filter only the reads that contain the expected primer ----
+#prepare cutadapt flags specific for each primer
+{
+
+# COI_3primers_ ----
+# select the respective orientations found to create cutadapt flags
+#  COI_3primers_FWD.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("_F_Forward"))]
+# 
+#  COI_3primers_FWD.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                 grep(pattern = c("_F_RevComp"))]
+# 
+#  COI_3primers_REV.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("_R_Forward"))]
+# 
+#  COI_3primers_REV.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                grep(pattern = c("_R_RevComp"))]
+# 
+# # creat flags
+#  # Trim FWD and the reverse-complement of REV off of R1 (forward reads)
+#  COI_3primers_R1.flags <- paste("-g", COI_3primers_FWD.orients, "-a", COI_3primers_REV.RC)
+#  # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
+#  COI_3primers_R2.flags <- paste("-G", COI_3primers_REV.orients, "-A", COI_3primers_FWD.RC)
+# 
+#  COI_3primers_R1.flags
+#  COI_3primers_R2.flags
+
+
+# MiFish ----
+# select the respective orientations found to create cutadapt flags
+MiFish_FWD.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                                   grep(pattern = c("MiFish_FWD_Forward"))]
+
+MiFish_FWD.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                               grep(pattern = c("MiFish_FWD_RevComp"))]
+
+MiFish_REV.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                                   grep(pattern = c("MiFish_REV_Forward"))]
+
+MiFish_REV.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+grep(pattern = c("MiFish_REV_RevComp"))]
+
+# creat flags
+ # Trim FWD and the reverse-complement of REV off of R1 (forward reads)
+ MiFish_R1.flags <- paste("-g", MiFish_FWD.orients, "-a", MiFish_REV.RC)
+#  # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
+ MiFish_R2.flags <- paste("-G", MiFish_REV.orients, "-A", MiFish_FWD.RC)
+#
+ MiFish_R1.flags
+ MiFish_R2.flags
+# 
+# # mBir ----
+# select the respective orientations found to create cutadapt flags
+ mBir_FWD.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                                    grep(pattern = c("mBir_FWD_Forward"))]
+
+ mBir_FWD.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                                grep(pattern = c("mBir_FWD_RevComp"))]
+
+ mBir_REV.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                                    grep(pattern = c("mBir_REV_Forward"))]
+
+ mBir_REV.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                               grep(pattern = c("mBir_REV_RevComp"))]
+
+# creat flags
+ # Trim FWD and the reverse-complement of REV off of R1 (forward reads)
+ mBir_R1.flags <- paste("-g", mBir_FWD.orients, "-a", mBir_REV.RC)
+ # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
+ mBir_R2.flags <- paste("-G", mBir_REV.orients, "-A", mBir_FWD.RC)
+
+ mBir_R1.flags
+ mBir_R2.flags
+#  
+# # COIr1_ ----
+# # select the respective orientations found to create cutadapt flags
+#  COIr1_FWD.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("COIr1_FWD_Forward"))]
+# 
+#  COIr1_FWD.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                 grep(pattern = c("COIr1_FWD_RevComp"))]
+# 
+#  COIr1_REV.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("COIr1_REV_Forward"))]
+# 
+#  COIr1_REV.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                grep(pattern = c("COIr1_REV_RevComp"))]
+# 
+# # creat flags
+#  # Trim FWD and the reverse-complement of REV off of R1 (forward reads)
+#  COIr1_R1.flags <- paste("-g", COIr1_FWD.orients, "-a", COIr1_REV.RC)
+#  # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
+#  COIr1_R2.flags <- paste("-G", COIr1_REV.orients, "-A", COIr1_FWD.RC)
+# 
+#  COIr1_R1.flags
+#  COIr1_R2.flags
+ 
+# taylor_ ----
+# select the respective orientations found to create cutadapt flags
+#  taylor_FWD.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("taylor_FWD_Forward"))]
+# 
+#  taylor_FWD.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                 grep(pattern = c("taylor_FWD_RevComp"))]
+# 
+#  taylor_REV.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("taylor_REV_Forward"))]
+# 
+#  taylor_REV.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                grep(pattern = c("taylor_REV_RevComp"))]
+# 
+# # creat flags
+#  # Trim FWD and the reverse-complement of REV off of R1 (forward reads)
+#  taylor_R1.flags <- paste("-g", taylor_FWD.orients, "-a", taylor_REV.RC)
+#  # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
+#  taylor_R2.flags <- paste("-G", taylor_REV.orients, "-A", taylor_FWD.RC)
+# 
+#  taylor_R1.flags
+#  taylor_R2.flags
+ 
+ 
+
+# miniCOI_ ----
+# select the respective orientations found to create cutadapt flags
+#  miniCOI_FWD.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("miniCOI_FWD_Forward"))]
+# 
+#  miniCOI_FWD.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                 grep(pattern = c("miniCOI_FWD_RevComp"))]
+# 
+#  miniCOI_REV.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("miniCOI_REV_Forward"))]
+# 
+#  miniCOI_REV.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                grep(pattern = c("miniCOI_REV_RevComp"))]
+# 
+# # creat flags
+#  # Trim FWD and the reverse-complement of REV off of R1 (forward reads)
+#  miniCOI_R1.flags <- paste("-g", miniCOI_FWD.orients, "-a", miniCOI_REV.RC)
+#  # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
+#  miniCOI_R2.flags <- paste("-G", miniCOI_REV.orients, "-A", miniCOI_FWD.RC)
+
+ # miniCOI_R1.flags
+ # miniCOI_R2.flags
+ 
+# p12SV5_ ----
+# select the respective orientations found to create cutadapt flags
+ p12SV5_FWD.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                                    grep(pattern = c("p12SV5_FWD_Forward"))]
+
+ p12SV5_FWD.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                                grep(pattern = c("p12SV5_FWD_RevComp"))]
+
+ p12SV5_REV.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                                    grep(pattern = c("p12SV5_REV_Forward"))]
+
+ p12SV5_REV.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                               grep(pattern = c("p12SV5_REV_RevComp"))]
+
+# creat flags
+ # Trim FWD and the reverse-complement of REV off of R1 (forward reads)
+ p12SV5_R1.flags <- paste("-g", p12SV5_FWD.orients, "-a", p12SV5_REV.RC)
+ # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
+ p12SV5_R2.flags <- paste("-G", p12SV5_REV.orients, "-A", p12SV5_FWD.RC)
+
+ p12SV5_R1.flags
+ p12SV5_R2.flags
+ 
+
+# fwh2_ ----
+# select the respective orientations found to create cutadapt flags
+#  fwh2_FWD.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("fwh2_FWD_Forward"))]
+# 
+#  fwh2_FWD.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                 grep(pattern = c("fwh2_FWD_RevComp"))]
+# 
+#  fwh2_REV.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("fwh2_REV_Forward"))]
+# 
+#  fwh2_REV.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                grep(pattern = c("fwh2_REV_RevComp"))]
+# 
+# # creat flags
+#  # Trim FWD and the reverse-complement of REV off of R1 (forward reads)
+#  fwh2_R1.flags <- paste("-g", fwh2_FWD.orients, "-a", fwh2_REV.RC)
+#  # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
+#  fwh2_R2.flags <- paste("-G", fwh2_REV.orients, "-A", fwh2_FWD.RC)
+# 
+#  fwh2_R1.flags
+#  fwh2_R2.flags
+ 
+
+# mmu_ ----
+# select the respective orientations found to create cutadapt flags
+ mmu_FWD.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                                    grep(pattern = c("mmu_FWD_Forward"))]
+
+ mmu_FWD.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                                grep(pattern = c("mmu_FWD_RevComp"))]
+
+ mmu_REV.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                                    grep(pattern = c("mmu_REV_Forward"))]
+
+ mmu_REV.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+                                               grep(pattern = c("mmu_REV_RevComp"))]
+
+# creat flags
+ # Trim FWD and the reverse-complement of REV off of R1 (forward reads)
+ mmu_R1.flags <- paste("-g", mmu_FWD.orients, "-a", mmu_REV.RC)
+ # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
+ mmu_R2.flags <- paste("-G", mmu_REV.orients, "-A", mmu_FWD.RC)
+
+ mmu_R1.flags
+ mmu_R2.flags
+
+# Fish1_ ----
+# select the respective orientations found to create cutadapt flags
+#  Fish1_FWD.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("Fish1_F_Forward"))]
+# 
+#  Fish1_FWD.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                 grep(pattern = c("Fish1_F_RevComp"))]
+# 
+#  Fish1_REV.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("Fish1_R_Forward"))]
+# 
+#  Fish1_REV.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                grep(pattern = c("Fish1_R_RevComp"))]
+# 
+# # creat flags
+#  # Trim FWD and the reverse-complement of REV off of R1 (forward reads)
+#  Fish1_R1.flags <- paste("-g", Fish1_FWD.orients, "-a", Fish1_REV.RC)
+#  # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
+#  Fish1_R2.flags <- paste("-G", Fish1_REV.orients, "-A", Fish1_FWD.RC)
+# 
+#  Fish1_R1.flags
+#  Fish1_R2.flags
+
+# Fish2_ ----
+# select the respective orientations found to create cutadapt flags
+#  Fish2_FWD.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("Fish2_F_Forward"))]
+# 
+#  Fish2_FWD.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                 grep(pattern = c("Fish2_F_RevComp"))]
+# 
+#  Fish2_REV.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("Fish2_R_Forward"))]
+# 
+#  Fish2_REV.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                grep(pattern = c("Fish2_R_RevComp"))]
+# 
+# # creat flags
+#  # Trim FWD and the reverse-complement of REV off of R1 (forward reads)
+#  Fish2_R1.flags <- paste("-g", Fish2_FWD.orients, "-a", Fish2_REV.RC)
+#  # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
+#  Fish2_R2.flags <- paste("-G", Fish2_REV.orients, "-A", Fish2_FWD.RC)
+# 
+#  Fish2_R1.flags
+#  Fish2_R2.flags
+ 
+# VF2_FR1d_ ----
+# select the respective orientations found to create cutadapt flags
+#  VF2_FR1d_FWD.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("VF2_FR1d_F_Forward"))]
+# 
+#  VF2_FR1d_FWD.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                 grep(pattern = c("VF2_FR1d_F_RevComp"))]
+# 
+#  VF2_FR1d_REV.orients <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                     grep(pattern = c("VF2_FR1d_R_Forward"))]
+# 
+#  VF2_FR1d_REV.RC <-  primers_all_orients$Sequence[primers_all_orients$`Orientation name` %>%
+#                                                grep(pattern = c("VF2_FR1d_R_RevComp"))]
+# 
+# # creat flags
+#  # Trim FWD and the reverse-complement of REV off of R1 (forward reads)
+#  VF2_FR1d_R1.flags <- paste("-g", VF2_FR1d_FWD.orients, "-a", VF2_FR1d_REV.RC)
+#  # Trim REV and the reverse-complement of FWD off of R2 (reverse reads)
+#  VF2_FR1d_R2.flags <- paste("-G", VF2_FR1d_REV.orients, "-A", VF2_FR1d_FWD.RC)
+# 
+#  VF2_FR1d_R1.flags
+#  VF2_FR1d_R2.flags
+ 
+}
+
+primers_all_orients$`Orientation name`
+
+
+
+
+# name the vector of files to not mix samples
+names(sample_idx_tbl$`Read file`) <- sample_idx_tbl$Unique_File_name
+
+{
+# # COI_3primers ----
+# COI_3primers_fnFs.cut <- sample_idx_tbl$`Read file`[sample_idx_tbl$Stage == "FWD_R1_cutadapt" & sample_idx_tbl$Primer == "VF2_FR1d;Fish1;Fish2"]
+#   
+# COI_3primers_fnRs.cut <- sample_idx_tbl$`Read file`[sample_idx_tbl$Stage == "FWD_R2_cutadapt" & sample_idx_tbl$Primer == "VF2_FR1d;Fish1;Fish2"]
+# 
+# COI_3primers_fnFs.paired <- sample_idx_tbl$`Read file`[sample_idx_tbl$Stage == "FWD_R1_paired"& sample_idx_tbl$Primer == "VF2_FR1d;Fish1;Fish2"]
+# 
+# COI_3primers_fnRs.paired <- sample_idx_tbl$`Read file`[sample_idx_tbl$Stage == "FWD_R2_paired"& sample_idx_tbl$Primer == "VF2_FR1d;Fish1;Fish2"]
+
+# # # MiFish ----
+MiFish_fnFs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R1_cutadapt" & Primer == "MiFish") %>% pull(`Read file`,name = Unique_File_name)
+
+MiFish_fnRs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R2_cutadapt" & Primer == "MiFish") %>% pull(`Read file`,name = Unique_File_name)
+
+MiFish_fnFs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R1_paired" & Primer == "MiFish") %>% pull(`Read file`,name = Unique_File_name)
+
+MiFish_fnRs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R2_paired" & Primer == "MiFish") %>% pull(`Read file`,name = Unique_File_name)
+
+# # # mBir ----
+mBir_fnFs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R1_cutadapt" & Primer == "MiBird") %>% pull(`Read file`,name = Unique_File_name)
+
+mBir_fnRs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R2_cutadapt" & Primer == "MiBird") %>% pull(`Read file`,name = Unique_File_name)
+
+mBir_fnFs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R1_paired" & Primer == "MiBird") %>% pull(`Read file`,name = Unique_File_name)
+
+mBir_fnRs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R2_paired" & Primer == "MiBird") %>% pull(`Read file`,name = Unique_File_name)
+
+# # # mmu ----
+mmu_fnFs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R1_cutadapt" & Primer == "Mima") %>% pull(`Read file`,name = Unique_File_name)
+
+mmu_fnRs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R2_cutadapt" & Primer == "Mima") %>% pull(`Read file`,name = Unique_File_name)
+
+mmu_fnFs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R1_paired" & Primer == "Mima") %>% pull(`Read file`,name = Unique_File_name)
+
+mmu_fnRs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R2_paired" & Primer == "Mima") %>% pull(`Read file`,name = Unique_File_name)
+
+# MiFish & mBir ----
+mBir_mFish_fnFs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R1_cutadapt" & Primer == "MiFish;MiBird") %>% pull(`Read file`,name = Unique_File_name)
+
+mBir_mFish_fnRs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R2_cutadapt" & Primer == "MiFish;MiBird") %>% pull(`Read file`,name = Unique_File_name)
+
+mBir_mFish_fnFs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R1_paired" & Primer == "MiFish;MiBird") %>% pull(`Read file`,name = Unique_File_name)
+
+mBir_mFish_fnRs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R2_paired" & Primer == "MiFish;MiBird") %>% pull(`Read file`,name = Unique_File_name)
+
+# mBir & mmu ----
+mBir_mmu_fnFs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R1_cutadapt" & Primer == "MiBird;MiMa") %>% pull(`Read file`,name = Unique_File_name)
+
+mBir_mmu_fnRs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R2_cutadapt" & Primer == "MiBird;MiMa") %>% pull(`Read file`,name = Unique_File_name)
+
+mBir_mmu_fnFs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R1_paired" & Primer == "MiBird;MiMa") %>% pull(`Read file`,name = Unique_File_name)
+
+mBir_mmu_fnRs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R2_paired" & Primer == "MiBird;MiMa") %>% pull(`Read file`,name = Unique_File_name)
+
+# COIr1 & fwh2 ----
+# COIr1_fwh2_fnFs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R1_cutadapt" & Primer == "COI_R1;COI fwh2") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# COIr1_fwh2_fnRs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R2_cutadapt" & Primer == "COI_R1;COI fwh2") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# COIr1_fwh2_fnFs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R1_paired" & Primer == "COI_R1;COI fwh2") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# COIr1_fwh2_fnRs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R2_paired" & Primer == "COI_R1;COI fwh2") %>% pull(`Read file`,name = Unique_File_name)
+
+# # COIr1 ----
+# COIr1_fnFs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R1_cutadapt" & Primer == "COI_R1") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# COIr1_fnRs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R2_cutadapt" & Primer == "COI_R1") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# COIr1_fnFs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R1_paired" & Primer == "COI_R1") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# COIr1_fnRs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R2_paired" & Primer == "COI_R1") %>% pull(`Read file`,name = Unique_File_name)
+
+# p12SV5;taylor ----
+# V5etay_fnFs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R1_cutadapt" & Primer == "p12SV5;taylor") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# V5etay_fnRs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R2_cutadapt" & Primer == "p12SV5;taylor") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# V5etay_fnFs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R1_paired" & Primer == "p12SV5;taylor") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# V5etay_fnRs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R2_paired" & Primer == "p12SV5;taylor") %>% pull(`Read file`,name = Unique_File_name)
+
+# VF2_FR1d;Fish1;Fish2 ----
+# VF2_F1_F2_fnFs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R1_cutadapt" & Primer == "VF2_FR1d;Fish1;Fish2") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# VF2_F1_F2_fnRs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R2_cutadapt" & Primer == "VF2_FR1d;Fish1;Fish2") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# VF2_F1_F2_fnFs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R1_paired" & Primer == "VF2_FR1d;Fish1;Fish2") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# VF2_F1_F2_fnRs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R2_paired" & Primer == "VF2_FR1d;Fish1;Fish2") %>% pull(`Read file`,name = Unique_File_name)
+
+
+# p12SV5 ----
+p12SV5_fnFs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R1_cutadapt" & Primer == "p12SV5") %>% pull(`Read file`,name = Unique_File_name)
+
+p12SV5_fnRs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R2_cutadapt" & Primer == "p12SV5") %>% pull(`Read file`,name = Unique_File_name)
+
+p12SV5_fnFs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R1_paired" & Primer == "p12SV5") %>% pull(`Read file`,name = Unique_File_name)
+
+p12SV5_fnRs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R2_paired" & Primer == "p12SV5") %>% pull(`Read file`,name = Unique_File_name)
+
+# miniCOI ----
+# miniCOI_fnFs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R1_cutadapt" & Primer == "miniCOI") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# miniCOI_fnRs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R2_cutadapt" & Primer == "miniCOI") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# miniCOI_fnFs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R1_paired" & Primer == "miniCOI") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# miniCOI_fnRs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R2_paired" & Primer == "miniCOI") %>% pull(`Read file`,name = Unique_File_name)
+
+# # taylor ----
+# taylor_fnFs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R1_cutadapt" & Primer == "tay16SMam") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# taylor_fnRs.cut <- sample_idx_tbl %>% filter(Stage == "FWD_R2_cutadapt" & Primer == "tay16SMam") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# taylor_fnFs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R1_paired" & Primer == "tay16SMam") %>% pull(`Read file`,name = Unique_File_name)
+# 
+# taylor_fnRs.paired <- sample_idx_tbl %>% filter(Stage == "FWD_R2_paired" & Primer == "tay16SMam") %>% pull(`Read file`,name = Unique_File_name)
+
+}
+
+
+
+
+sample_idx_tbl %>% 
+  filter(Stage == "FWD_R1_cutadapt" & Primer == "p12SV5;taylor") %>% 
+  unique() %>% 
+  pull(`Read file`)
+```
+  
+#### Identify primer specific read files 
+
+
+```r
+# Run Cutadapt
+
+
+# MiFish ----
+for(i in seq_along(MiFish_fnFs.cut)) {
+system2(cutadapt, args = c(MiFish_R1.flags, MiFish_R2.flags, "-j 70", "-n", 4, # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+"-o", MiFish_fnFs.cut[i], "-p", MiFish_fnRs.cut[i], # output files
+MiFish_fnFs.paired[i], MiFish_fnRs.paired[i],  # input files
+"--minimum-length 10 --discard-untrimmed")) # guarantee no zerolength reads
+}
+
+
+# COIr1 ----
+# for(i in seq_along(COIr1_fnFs.cut)) {
+# system2(cutadapt, args = c(COIr1_R1.flags, COIr1_R2.flags, "-j 70", "-n", 3, # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+# "-o", COIr1_fnFs.cut[i], "-p", COIr1_fnRs.cut[i], # output files
+# COIr1_fnFs.paired[i], COIr1_fnRs.paired[i],  # input files
+# "--minimum-length 10 --discard-untrimmed")) # guarantee no zerolength reads
+# }
+
+# p12SV5 ----
+for(i in seq_along(p12SV5_fnFs.cut)) {
+system2(cutadapt, args = c(p12SV5_R1.flags, p12SV5_R2.flags, "-j 70", "-n", 4, # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+"-o", p12SV5_fnFs.cut[i], "-p", p12SV5_fnRs.cut[i], # output files
+p12SV5_fnFs.paired[i], p12SV5_fnRs.paired[i],  # input files
+"--minimum-length 10 --discard-untrimmed")) # guarantee no zerolength reads
+}
+
+# miniCOI ----
+# for(i in seq_along(miniCOI_fnFs.cut)) {
+# system2(cutadapt, args = c(miniCOI_R1.flags, miniCOI_R2.flags, "-j 70", "-n", 3, # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+# "-o", miniCOI_fnFs.cut[i], "-p", miniCOI_fnRs.cut[i], # output files
+# miniCOI_fnFs.paired[i], miniCOI_fnRs.paired[i],  # input files
+# "--minimum-length 10 --discard-untrimmed")) # guarantee no zerolength reads
+# }
+
+# taylor ----
+# for(i in seq_along(taylor_fnFs.cut)) {
+# system2(cutadapt, args = c(taylor_R1.flags, taylor_R2.flags, "-j 70", "-n", 3, # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+# "-o", taylor_fnFs.cut[i], "-p", taylor_fnRs.cut[i], # output files
+# taylor_fnFs.paired[i], taylor_fnRs.paired[i],  # input files
+# "--minimum-length 10 --discard-untrimmed")) # guarantee no zerolength reads
+# }
+
+
+# MiBird ----
+for(i in seq_along(mBir_fnFs.cut)) {
+system2(cutadapt, args = c(mBir_R1.flags, mBir_R2.flags, "-j 70", "-n", 4, # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+"-o", mBir_fnFs.cut[i], "-p", mBir_fnRs.cut[i], # output files
+mBir_fnFs.paired[i], mBir_fnRs.paired[i],  # input files
+"--minimum-length 10 --discard-untrimmed")) # guarantee no zerolength reads
+}
+
+
+# MiMammal ----
+for(i in seq_along(mmu_fnFs.cut)) {
+system2(cutadapt, args = c(mmu_R1.flags, mmu_R2.flags, "-j 70", "-n", 4, # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+"-o", mmu_fnFs.cut[i], "-p", mmu_fnRs.cut[i], # output files
+mmu_fnFs.paired[i], mmu_fnRs.paired[i],  # input files
+"--minimum-length 10 --discard-untrimmed")) # guarantee no zerolength reads
+}
+
+# VF2_FR1d;Fish1;Fish2 ----
+# for(i in seq_along(VF2_F1_F2_fnFs.cut)) {
+# system2(cutadapt, args = c(Fish1_R1.flags,
+#                            Fish1_R2.flags,
+#                            Fish2_R1.flags,
+#                            Fish2_R2.flags,
+#                            VF2_FR1d_R1.flags,
+#                            VF2_FR1d_R2.flags, "-j 70", "-n", 3, # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+# "-o", VF2_F1_F2_fnFs.cut[i], "-p", VF2_F1_F2_fnRs.cut[i], # output files
+# VF2_F1_F2_fnFs.paired[i], VF2_F1_F2_fnRs.paired[i],  # input files
+# "--minimum-length 10 --discard-untrimmed")) # guarantee no zerolength reads
+# }
+
+# MiBird & MiFish ----
+for(i in seq_along(mBir_mFish_fnFs.cut)) {
+system2(cutadapt, args = c(MiFish_R1.flags, MiFish_R2.flags,
+                           mBir_R1.flags, mBir_R2.flags,
+                           "-j 70", "-n", 4, # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+"-o", mBir_mFish_fnFs.cut[i], "-p", mBir_mFish_fnRs.cut[i], # output files
+mBir_mFish_fnFs.paired[i], mBir_mFish_fnRs.paired[i],  # input files
+"--minimum-length 10 --discard-untrimmed")) # guarantee no zerolength reads
+}
+
+
+# MiBird & MiMammal ----
+for(i in seq_along(mBir_mmu_fnFs.cut)) {
+system2(cutadapt, args = c(mmu_R1.flags, mmu_R2.flags,
+                           mBir_R1.flags, mBir_R2.flags,
+                           "-j 70", "-n", 4, # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+"-o", mBir_mmu_fnFs.cut[i], "-p", mBir_mmu_fnRs.cut[i], # output files
+mBir_mmu_fnFs.paired[i], mBir_mmu_fnRs.paired[i],  # input files
+"--minimum-length 10 --discard-untrimmed")) # guarantee no zerolength reads
+}
+
+
+# COIr1 & COI ----
+# for(i in seq_along(COIr1_fwh2_fnFs.cut)) {
+# system2(cutadapt, args = c(COIr1_R1.flags, COIr1_R2.flags,
+#                            fwh2_R1.flags, fwh2_R2.flags,
+#                            "-j 70", "-n", 3, # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+# "-o", COIr1_fwh2_fnFs.cut[i], "-p", COIr1_fwh2_fnRs.cut[i], # output files
+# COIr1_fwh2_fnFs.paired[i], COIr1_fwh2_fnRs.paired[i],  # input files
+# "--minimum-length 10 --discard-untrimmed")) # guarantee no zerolength reads
+# }
+
+
+
+# p12SV5 & taylor ----
+# for(i in seq_along(V5etay_fnFs.cut)) {
+# system2(cutadapt, args = c(p12SV5_R1.flags, p12SV5_R2.flags,
+#                            taylor_R1.flags, taylor_R2.flags,
+#                            "-j 70", "-n", 3, # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+# "-o", V5etay_fnFs.cut[i], "-p", V5etay_fnRs.cut[i], # output files
+# V5etay_fnFs.paired[i], V5etay_fnRs.paired[i],  # input files
+# "--minimum-length 10 --discard-untrimmed")) # guarantee no zerolength reads
+# }
+
+
+
+(sample_idx_tbl %>% filter(str_detect(pattern = "cutadapt",string = Stage)) %>% pull(`Read file`))[!(sample_idx_tbl %>% filter(str_detect(pattern = "cutadapt",string = Stage)) %>% pull(`Read file`) %>% file.exists() )]
+%in%
+(sample_idx_tbl %>% filter(str_detect(pattern = "paired",string = Stage)) %>% 
+   filter(!str_detect(pattern = "^rev_",string = `Read file`)) %>% pull(`Read file`) %>% pull(`Read file`) %>% file.exists())
+
+
+
+################################################################################################
+ #escrevendo manualmente caso o cuadapt n'ao funcione via R
+# taylor ----
+# # 
+# for(i in seq_along(taylor_fnFs.cut)) {
+# 
+#   line <- paste0("cutadapt ",paste0(taylor_R1.flags,collapse = " ")," ", paste0(taylor_R2.flags,collapse = " "), " -j 70", " -n", " 3", # -n 2 required to remove FWD and REV from reads !!!!!!!!3
+# " -o ", taylor_fnFs.cut[i], " -p ", taylor_fnRs.cut[i]," ", # output files
+# taylor_fnFs.paired[i]," ", taylor_fnRs.paired[i],  # input files
+# " --minimum-length 10 --discard-untrimmed;") # guarantee no zerolength reads
+# 
+# 
+# write(line,file="~/prjcts/ecomol/analyses/2023/WWF/data/cutadapt_taylor.sh",append=TRUE)
+#   }
+# 
+```
+
+<br>
+
+### Identify error rates intrinsic to sequencing
+
+
+```r
+# 13 - learn error rates ----
+
+# must be performed independently for diferent sequencing runs !
+
+primers_n_samples$`Metadata 6` %>% unique()
+
+
+
+#seq2
+
+
+
+################ if cutadapted, must change input here !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+sample_idx_tbl$Project %>% unique()
+sample_idx_tbl$Stage %>% unique()
+
+
+
+all_fnFs.cut <- sample_idx_tbl %>%
+  filter(Stage %in% c("FWD_R1_cutadapt","REV_R1_cutadapt")) %>% 
+  filter(file.exists(`Read file`)) %>% 
+    pull(`Read file`)
+
+all_fnRs.cut <- sample_idx_tbl %>%
+  filter(Stage %in% c("FWD_R2_cutadapt","REV_R2_cutadapt")) %>% 
+  filter(file.exists(`Read file`)) %>% 
+    pull(`Read file`)
+
+
+
+length(all_fnFs.cut)
+length(all_fnRs.cut)
+
+
+
+# errors in R1 reads ----
+  all_errF <- learnErrors(fls = all_fnFs.cut,
+                               multithread=TRUE,randomize = TRUE)
+# errors in R2 reads ----
+  all_errR <- learnErrors(fls = all_fnRs.cut,
+                               multithread=TRUE,randomize = TRUE)
+
+#######################################################################################
+# learning separetely for each sequencing run
+
+primers_n_samples$Lib %>% unique()
+              # 
+              #s15
+              s15_fnFs.cut <- sample_idx_tbl %>%
+                filter(Stage %in% c("FWD_R1_cutadapt","REV_R1_cutadapt")) %>%
+                filter(Lib %in% c("iSeq15")) %>%
+                filter(file.exists(`Read file`)) %>%
+                  pull(`Read file`)
+
+              s15_fnRs.cut <- sample_idx_tbl %>%
+                filter(Stage %in% c("FWD_R2_cutadapt","REV_R2_cutadapt")) %>%
+                filter(Lib %in% c("iSeq15")) %>%
+                filter(file.exists(`Read file`)) %>%
+                  pull(`Read file`)
+
+              length(s15_fnFs.cut)
+              length(s15_fnRs.cut)
+
+              # errors in R1 reads ----
+                s15_errF <- learnErrors(fls = s15_fnFs.cut,
+                                             multithread=TRUE,randomize = TRUE)
+              # errors in R2 reads ----
+                s15_errR <- learnErrors(fls = s15_fnRs.cut,
+                                             multithread=TRUE,randomize = TRUE)
+              #s18
+              s18_fnFs.cut <- sample_idx_tbl %>%
+                filter(Stage %in% c("FWD_R1_cutadapt","REV_R1_cutadapt")) %>%
+                filter(Lib %in% c("iSeq18_090423")) %>%
+                filter(file.exists(`Read file`)) %>%
+                  pull(`Read file`)
+
+              s18_fnRs.cut <- sample_idx_tbl %>%
+                filter(Stage %in% c("FWD_R2_cutadapt","REV_R2_cutadapt")) %>%
+                filter(Lib %in% c("iSeq18_090423")) %>%
+                filter(file.exists(`Read file`)) %>%
+                  pull(`Read file`)
+
+              length(s18_fnFs.cut)
+              length(s18_fnRs.cut)
+
+              # errors in R1 reads ----
+                s18_errF <- learnErrors(fls = s18_fnFs.cut,
+                                             multithread=TRUE,randomize = TRUE)
+              # errors in R2 reads ----
+                s18_errR <- learnErrors(fls = s18_fnRs.cut,
+                                             multithread=TRUE,randomize = TRUE)
+
+              # 
+              # 
+              #
+              #
+              #s19
+              s19_fnFs.cut <- sample_idx_tbl %>%
+                filter(Stage %in% c("FWD_R1_cutadapt","REV_R1_cutadapt")) %>%
+                filter(Lib %in% c("iSeq19_23062020")) %>%
+                filter(file.exists(`Read file`)) %>%
+                  pull(`Read file`)
+
+              s19_fnRs.cut <- sample_idx_tbl %>%
+                filter(Stage %in% c("FWD_R2_cutadapt","REV_R2_cutadapt")) %>%
+                filter(Lib %in% c("iSeq19_23062020")) %>%
+                filter(file.exists(`Read file`)) %>%
+                  pull(`Read file`)
+
+              length(s19_fnFs.cut)
+              length(s19_fnRs.cut)
+
+              # errors in R1 reads ----
+                s19_errF <- learnErrors(fls = s19_fnFs.cut,
+                                             multithread=TRUE,randomize = TRUE)
+              # errors in R2 reads ----
+                s19_errR <- learnErrors(fls = s19_fnRs.cut,
+                                             multithread=TRUE,randomize = TRUE)
+          # #s20
+              s20_fnFs.cut <- sample_idx_tbl %>%
+                filter(Stage %in% c("FWD_R1_cutadapt","REV_R1_cutadapt")) %>%
+                filter(Lib %in% c("iSeq20")) %>%
+                filter(file.exists(`Read file`)) %>%
+                  pull(`Read file`)
+
+              s20_fnRs.cut <- sample_idx_tbl %>%
+                filter(Stage %in% c("FWD_R2_cutadapt","REV_R2_cutadapt")) %>%
+                filter(Lib %in% c("iSeq20")) %>%
+                filter(file.exists(`Read file`)) %>%
+                  pull(`Read file`)
+
+              length(s20_fnFs.cut)
+              length(s20_fnRs.cut)
+
+              # errors in R1 reads ----
+                s20_errF <- learnErrors(fls = s20_fnFs.cut,
+                                             multithread=TRUE,randomize = TRUE)
+              # errors in R2 reads ----
+                s20_errR <- learnErrors(fls = s20_fnRs.cut,
+                                             multithread=TRUE,randomize = TRUE)
+```
+
+<br>
+
+### Dereplication: grouping into ASVs
+
+On this step each library is reduced to its unique composing sequences and their counts.
+
+
+```r
+# 14 - dada dereplication ----
+
+
+
+
+# Carefullllllllllllllllllllllllllllllllllllllllll
+#            if not demuxed, reads must come from cutadapt files, not paired
+
+
+
+# #all ----
+all_derep_forward <- derepFastq(all_fnFs.cut, verbose=TRUE)
+
+all_derep_reverse <- derepFastq(all_fnRs.cut, verbose=TRUE)
+
+all_derep_forward[13]
+all_derep_reverse[13]
+
+
+all_dadaFs <- dada(all_derep_forward, err=all_errF, multithread=TRUE)
+all_dadaRs <- dada(all_derep_reverse, err=all_errR, multithread=TRUE)
+# 
+
+        
+
+        
+ 
+
+# #s15 ----
+        s15_derep_forward <- derepFastq(s15_fnFs.cut, verbose=TRUE)
+
+        s15_derep_reverse <- derepFastq(s15_fnRs.cut, verbose=TRUE)
+
+        s15_derep_forward[13]
+        s15_derep_reverse[13]
+
+        s15_dadaFs <- dada(s15_derep_forward, err=s15_errF, multithread=TRUE)
+        s15_dadaRs <- dada(s15_derep_reverse, err=s15_errR, multithread=TRUE)
+# 
+
+# #s18 ----
+        s18_derep_forward <- derepFastq(s18_fnFs.cut, verbose=TRUE)
+
+        s18_derep_reverse <- derepFastq(s18_fnRs.cut, verbose=TRUE)
+
+        s18_derep_forward[3]
+        s18_derep_reverse[3]
+
+        s18_dadaFs <- dada(s18_derep_forward, err=s18_errF, multithread=TRUE)
+        s18_dadaRs <- dada(s18_derep_reverse, err=s18_errR, multithread=TRUE)
+# 
+
+       
+
+        
+
+# #s19 ----
+        s19_derep_forward <- derepFastq(s19_fnFs.cut, verbose=TRUE)
+
+        s19_derep_reverse <- derepFastq(s19_fnRs.cut, verbose=TRUE)
+
+        s19_derep_forward[13]
+        s19_derep_reverse[13]
+
+        s19_dadaFs <- dada(s19_derep_forward, err=s19_errF, multithread=TRUE)
+        s19_dadaRs <- dada(s19_derep_reverse, err=s19_errR, multithread=TRUE)
+# 
+
+        
+
+# #s20 ----
+        s20_derep_forward <- derepFastq(s20_fnFs.cut, verbose=TRUE)
+
+        s20_derep_reverse <- derepFastq(s20_fnRs.cut, verbose=TRUE)
+
+        s20_derep_forward[13]
+        s20_derep_reverse[13]
+
+        s20_dadaFs <- dada(s20_derep_forward, err=s20_errF, multithread=TRUE)
+        s20_dadaRs <- dada(s20_derep_reverse, err=s20_errR, multithread=TRUE)
+# 
+
+        
+
+        
+#use this format only for demultiplexed data ----        
+# #seq2 ----
+# {
+#   # R1
+#   #reads from de R1 files, FWD oriented
+#   seq2_derep_FWD_R1 <- derepFastq(sample_idx_tbl_wide$FWD_R1_paired[file.exists(sample_idx_tbl_wide$FWD_R1_paired)], verbose=TRUE)
+#   
+#   # names(all_derep_forward) <- all_sample.names
+#   #reads from de R1 files, REV oriented
+#   seq2_derep_REV_R1 <- derepFastq(sample_idx_tbl_wide$REV_R1_paired[file.exists(sample_idx_tbl_wide$REV_R1_paired)], verbose=TRUE)
+#   # names(all_derep_forward) <- all_sample.names
+#   
+#   # R2
+#   #reads from de R2 files, FWD oriented
+#   seq2_derep_FWD_R2 <- derepFastq(sample_idx_tbl_wide$FWD_R2_paired[file.exists(sample_idx_tbl_wide$FWD_R2_paired) 
+#                                                                     # & sample_idx_tbl_wide$`Metadata 6` == "seq2"
+#                                                                     ], verbose=TRUE)
+#   # names(all_derep_reverse) <- all_sample.names
+#   #reads from de R2 files, REV oriented
+#   seq2_derep_REV_R2 <- derepFastq(sample_idx_tbl_wide$REV_R2_paired[file.exists(sample_idx_tbl_wide$REV_R2_paired) 
+#                                                                     # & sample_idx_tbl_wide$`Metadata 6` == "seq2"
+#                                                                     ], verbose=TRUE)
+#   # names(all_derep_reverse) <- all_sample.names
+#   seq2_FWD_dadaFs <- dada(seq2_derep_FWD_R1, err=seq2_errF, multithread=TRUE)
+#   seq2_REV_dadaFs <- dada(seq2_derep_REV_R1, err=seq2_errF, multithread=TRUE)
+#   seq2_FWD_dadaRs <- dada(seq2_derep_FWD_R2, err=seq2_errR, multithread=TRUE)
+#   seq2_REV_dadaRs <- dada(seq2_derep_REV_R2, err=seq2_errR, multithread=TRUE)
+# }
+# 
+```
+
+<br>
+
+### Merge read pairs 
+
+On this step the forward an reverse reads are merged, by overlap, in order to reconstruct the insert full sequence.
+
+
+```r
+# combine DADA2 derep objects into a single one to performe all downstrem steps together
+
+              
+              all_dadaFs <- c(s15_dadaFs,
+                              s18_dadaFs,
+                              s19_dadaFs,
+                              s20_dadaFs)
+              
+              all_dadaRs <- c(s15_dadaRs,
+                              s18_dadaRs,
+                              s19_dadaRs,
+                              s20_dadaRs)
+              
+              
+              all_derep_forward <- c(s15_derep_forward,
+                                     s18_derep_forward,
+                                     s19_derep_forward,
+                                     s20_derep_forward)
+              
+              all_derep_reverse <- c(s15_derep_reverse,
+                                     s18_derep_reverse,
+                                     s19_derep_reverse,
+                                     s20_derep_reverse)
+              
+
+
+
+
+length(all_dadaFs)
+length(all_dadaRs)
+length(all_derep_forward)
+length(all_derep_reverse)
+
+
+
+
+
+
+
+# 15 - merge read pairs ----
+# #merging ----
+        all_mergers <- mergePairs(dadaF = all_dadaFs,
+                                  derepF =  all_derep_forward,
+                                  dadaR =  all_dadaRs,
+                                  derepR =  all_derep_reverse,
+                                  # minOverlap = 12,
+                                  minOverlap = 10,
+                                  maxMismatch = 1,
+                                  # returnRejects = TRUE,
+                                  # justConcatenate = TRUE,
+                                  verbose=TRUE)
+        
+
+
+# #merging ----
+        # all_concat <- mergePairs(dadaF = all_dadaFs,
+        #                           derepF =  all_derep_forward,
+        #                           dadaR =  all_dadaRs,
+        #                           derepR =  all_derep_reverse,
+        #                           # minOverlap = 12,
+        #                           minOverlap = 10,
+        #                           maxMismatch = 1,
+        #                           # returnRejects = TRUE,
+        #                           justConcatenate = TRUE,
+        #                           verbose=TRUE)
+        
+
+
+
+
+
+
+#seq2 ----
+# #seq2 FWD ----
+# seq2_mergers_FWD <- mergePairs(dadaF = seq2_FWD_dadaFs,
+#                                derepF = seq2_derep_FWD_R1,
+#                                dadaR = seq2_FWD_dadaRs,
+#                                derepR = seq2_derep_FWD_R2,
+#                                minOverlap = 20,
+#                                maxMismatch = 0,   # can be changed from 0 to 1 if missing pairs. Usualy not needed on good quality runs.
+#                                returnReject = FALSE,
+#                                verbose=TRUE)
+# 
+# 
+# #seq2 REV ----
+# seq2_mergers_REV <- mergePairs(dadaF = seq2_REV_dadaFs,
+#                                derepF = seq2_derep_REV_R1,
+#                                dadaR = seq2_REV_dadaRs,
+#                                derepR = seq2_derep_REV_R2,
+#                                minOverlap = 20,
+#                                maxMismatch = 0,   # can be changed from 0 to 1 if missing pairs. Usualy not needed on good quality runs.
+#                                returnRejects = FALSE,
+#                                verbose=TRUE)
+#combine sequence tables of different merging steps, or with concat, R1, R2 ----
+ 
+ #must use a customized function that is not on dada2 (by benjjneb)
+ 
+ sumSequenceTables <- function(table1, table2, ..., orderBy = "abundance") {
+  # Combine passed tables into a list
+  tables <- list(table1, table2)
+  tables <- c(tables, list(...))
+  # Validate tables
+  if(!(all(sapply(tables, dada2:::is.sequence.table)))) {
+    stop("At least two valid sequence tables, and no invalid objects, are expected.")
+  }
+  sample.names <- rownames(tables[[1]])
+  for(i in seq(2, length(tables))) {
+    sample.names <- c(sample.names, rownames(tables[[i]]))
+  }
+  seqs <- unique(c(sapply(tables, colnames), recursive=TRUE))
+  sams <- unique(sample.names)
+  # Make merged table
+  rval <- matrix(0L, nrow=length(sams), ncol=length(seqs))
+  rownames(rval) <- sams
+  colnames(rval) <- seqs
+  for(tab in tables) {
+    rval[rownames(tab), colnames(tab)] <- rval[rownames(tab), colnames(tab)] + tab
+  }
+  # Order columns
+  if(!is.null(orderBy)) {
+    if(orderBy == "abundance") {
+      rval <- rval[,order(colSums(rval), decreasing=TRUE),drop=FALSE]
+    } else if(orderBy == "nsamples") {
+      rval <- rval[,order(colSums(rval>0), decreasing=TRUE),drop=FALSE]
+    }
+  }
+  rval
+}
+
+#Only reverse the read 2 if the library prep is enzimatic, not PCR. BUT, try both an chose the one with less seqs (=less RC duplicates) 
+
+# colnames(R2_seqtab) <- dada2:::rc(colnames(R2_seqtab)) # reverse-complement of read2
+              # R1_R2_seqtab <- sumSequenceTables(table1 = R1_seqtab, table2 = R2_seqtab)
+
+              # dim(R1_R2_seqtab)
+              # mergers_seqtab <- sumSequenceTables(table1 = R1_R2_seqtab, table2 = mergers_seqtab)
+
+              # dim(mergers_seqtab)
+              # dim(mergers_seqtab)
+#if to use mergers only
+
+
+# run ----
+# 
+# 
+# 
+# 
+
+
+# use reads R1 and R2 separetely ----
+
+
+mergers_seqtab <- makeSequenceTable(samples = all_mergers)
+# concat_seqtab <- makeSequenceTable(samples = all_concat)
+R1_seqtab <- makeSequenceTable(samples = all_dadaFs)
+R2_seqtab <- makeSequenceTable(samples = all_dadaRs)
+
+
+
+
+# Combine R1 and R2 reads ----
+
+#atenção. tem que inverter o R2 pra somar as tabelas aqui, antes do merge!!!!!!!!!!!
+      # colnames(R2_seqtab) <- dada2:::rc(colnames(R2_seqtab))
+      # 
+      # 
+      # run_mergers_mergers_seqtab <- sumSequenceTables(table1 = R1_seqtab, table2 = R2_seqtab)
+
+
+# FWD & REV oriented mergers
+      # run_mergers_FWD_seqtab <- makeSequenceTable(samples = run_mergers_FWD)
+      # run_mergers_REV_seqtab <- makeSequenceTable(samples = run_mergers_REV)
+
+#atenção. tem que inverter o R2 pra somar as tabelas aqui, antes do merge!!!!!!!!!!!
+      # colnames(run_mergers_REV_seqtab) <- dada2:::rc(colnames(run_mergers_REV_seqtab))
+
+      # run_mergers_mergers_seqtab <- sumSequenceTables(table1 = run_mergers_FWD_seqtab, table2 = run_mergers_REV_seqtab)
+ 
+      
+      
+dada2:::is.sequence.table(mergers_seqtab)
+ # dada2:::is.sequence.table(concat_seqtab)
+ dada2:::is.sequence.table(R1_seqtab)
+ dada2:::is.sequence.table(R2_seqtab)
+
+ colnames(mergers_seqtab)
+ # colnames(concat_seqtab)
+ colnames(R1_seqtab)
+ colnames(R2_seqtab)
+ 
+# dim(concat_seqtab)
+dim(mergers_seqtab)
+dim(R1_seqtab)
+dim(R2_seqtab)
+
+      
+      
+# 
+# dim(run_mergers_FWD_seqtab)
+# dim(run_mergers_REV_seqtab)
+# dim(run_mergers_mergers_seqtab)
+
+
+
+
+
+
+getN <- function(x) sum(getUniques(x))
+
+
+# names(all_mergers)
+
+# 
+# all_dadaFs <- c(seq2_FWD_dadaFs,seq2_REV_dadaFs,
+#                 seq3_FWD_dadaFs,seq3_REV_dadaFs)
+# all_dadaRs <- c(seq2_FWD_dadaRs,seq2_REV_dadaRs,
+#                 seq3_FWD_dadaRs,seq3_REV_dadaRs)
+# 
+
+
+sapply(all_mergers, getN)
+sapply(all_dadaFs, getN) #only R1
+sapply(all_dadaRs, getN) #only R2
+
+
+
+
+# mergers_seqtab <- sumSequenceTables(seq2_mergers_mergers_seqtab, seq3_mergers_mergers_seqtab)
+# mergers_seqtab <- seq2_mergers_mergers_seqtab
+# mergers_seqtab <- seq3_mergers_mergers_seqtab
+
+
+dada2:::is.sequence.table(mergers_seqtab)
+
+colnames(mergers_seqtab)
+ 
+
+dim(mergers_seqtab)
+
+
+
+
+
+# rm(mergers_seqtab)
+# rm(mergers_seqtab.nochim)
+rownames(mergers_seqtab) 
+colnames(mergers_seqtab) %>% length()
+colnames(mergers_seqtab) %>% unique() %>% length()
+
+dim(mergers_seqtab)
+str(mergers_seqtab)
+
+# Inspect distribution of sequence lengths
+table(nchar(getSequences(mergers_seqtab)))
+table(nchar(getSequences(mergers_seqtab))) %>% plot() #size distribution of the ASVs
+```
+
+<br>
+
+### Remove _chimeras_ 
+
+_Chimeras_ are artificial read pairs that might have been generated erroneously on sequencing. The **DADA2** package estimates the probability of a sequence to be chimeric given the abundancy of its parental sequnces. After chimeric sequences removal, the remaining ASVs length distribution is assessed. On further steps it will be used to restrict analisys to ASVs compatible with each primer amplicons' length interval, in order to keep of unexpected ASVs.
+
+
+```r
+# 16 - remove chimeras ----
+
+
+# any(colnames(C1conc_seqtab) %in% colnames(mergers_seqtab))
+
+mergers_seqtab.nochim <- removeBimeraDenovo(mergers_seqtab, method="consensus", multithread=TRUE, verbose=TRUE)  
+# concat_seqtab.nochim <- removeBimeraDenovo(concat_seqtab, method="consensus", multithread=TRUE, verbose=TRUE)  
+
+R1_seqtab.nochim <- removeBimeraDenovo(R1_seqtab, method="consensus", multithread=TRUE, verbose=TRUE) 
+R2_seqtab.nochim <- removeBimeraDenovo(R2_seqtab, method="consensus", multithread=TRUE, verbose=TRUE)  
+
+
+
+
+
+
+#minFoldParentOverAbundance??
+dim(mergers_seqtab.nochim)
+dim(concat_seqtab)
+dim(concat_seqtab.nochim)
+sum(mergers_seqtab.nochim)/sum(mergers_seqtab) # =  0.9567811 , perda de 4.4% na abundancia -> estes 4.4% são quimeras
+
+#count proportion of ASVs of a given length
+table(nchar(getSequences(mergers_seqtab.nochim)))
+table(nchar(getSequences(mergers_seqtab.nochim))) %>% plot()
+
+
+View(mergers_seqtab.nochim)
+dim(mergers_seqtab.nochim)
+```
+<br>
+
+<br>
+
+### Classify taxonomy
+
+On this step the ASVs identified by the **DADA2** pipeline, jointly for all libraries of each primer, are associated (or not) to any of the sequences on the Reference 12S Sequences Database. DADA2 has two strategies to identify taxa. The first, _assignSpecies_, identify perfect matches of the ASVs in the Reference Database. The second, _assignTaxonomy_, use a RDP Naive Bayesian Classifier algorithm (Wang, 2007) with kmer size 8 and 100 bootstrap replicates to associate ASVs to the Reference Database Sequences. In the latter, the taxonomy ranks classification is proportional to the sequence similarity, although this relation is not yet clear to us.
+
+
+#Exact species
+
+```r
+#19 - classify taxonomy exactly ----
+
+str(mergers_seqtab)
+
+rownames(mergers_seqtab.nochim)
+
+dim(mergers_seqtab)
+
+# merges
+
+mergers_sps <- dada2::assignSpecies(seqs = mergers_seqtab.nochim,allowMultiple = 10,
+                               refFasta =  "/home/heron/prjcts/eDNA_fish/DB/jun23/DB/LGC12Sdb-jun23-dada_SP_fullDB.fasta",
+                                # refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/BOLD/BOLD_dada_tax_Sp.fasta",
+                               tryRC=TRUE,
+                               n = 20000,
+                               verbose = TRUE)
+
+
+# concat_sps <- dada2::assignSpecies(seqs = concat_seqtab.nochim,allowMultiple = 10,
+#                                # refFasta =  "/home/heron/prjcts/eDNA_fish/DB/mai22/DB/LGC12Sdb-mai22-dada_SP_fullDB.fasta",
+#                                 refFasta =  "/home/heron/prjcts/eDNA_fish/data/refs/db/BOLD/BOLD_dada_tax_Sp.fasta",
+#                                tryRC=TRUE,
+#                                n = 20000,
+#                                verbose = TRUE)
+
+      R1_sps <- dada2::assignSpecies(seqs = R1_seqtab.nochim,allowMultiple = 10,
+                               refFasta =  "/home/heron/prjcts/eDNA_fish/DB/jun23/DB/LGC12Sdb-jun23-dada_SP_fullDB.fasta",
+                               # refFasta =  "/home/heron/prjcts/eDNA_fish/data/refs/db/BOLD/BOLD_dada_tax_Sp.fasta",
+                               tryRC=TRUE,
+                               n = 20000,
+                               verbose = TRUE)
+
+      R2_sps <- dada2::assignSpecies(seqs = R2_seqtab.nochim,allowMultiple = 10,
+                               refFasta =  "/home/heron/prjcts/eDNA_fish/DB/jun23/DB/LGC12Sdb-jun23-dada_SP_fullDB.fasta",
+                               # refFasta =  "/home/heron/prjcts/eDNA_fish/data/refs/db/BOLD/BOLD_dada_tax_Sp.fasta",
+                               tryRC=TRUE,
+                               n = 20000,
+                               verbose = TRUE)
+```
+
+# Unexact species or other taxonomic ranks
+
+```r
+#20 - classify taxonomy ----
+sample_names(all_taxa)
+
+      mergers_taxa <- dada2::assignTaxonomy(seqs = mergers_seqtab.nochim,
+                                            refFasta =  "/home/heron/prjcts/eDNA_fish/DB/jun23/DB/LGC12Sdb-jun23-dada_tax_fullDB.fasta",
+
+                                            multithread=TRUE, tryRC=TRUE,
+                                            taxLevels = c("Kingdom","Phylum","Class","Order","Family",
+                                                          "Genus", "Species","Specimen","Basin"),
+                                            
+                           # refFasta =  "/home/heron/prjcts/eDNA_fish/DB/mai22/DB/LGC12Sdb-mai22-dada_tax_fullDB.fasta",
+                           # multithread=TRUE, 
+                           # tryRC=TRUE,
+                           # taxLevels = c("Kingdom","Phylum","Class",
+                                         # "Order", "Family", "Genus", 
+                                         # "Species","Specimen","Basin"),
+                           outputBootstraps = TRUE, verbose = TRUE )
+      
+
+      # concat_taxa <- dada2::assignTaxonomy(seqs = concat_seqtab.nochim,
+      #                                       refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/12S_BOLD_tax_10ranks.fasta",
+      # 
+      #                                       multithread=TRUE, tryRC=TRUE,
+      #                                       taxLevels = c("Kingdom","Phylum","Class","Order","Family",
+      #                                                     "Genus", "Species","Specimen","Basin"),
+      #                                       
+      #                      # refFasta =  "/home/heron/prjcts/fish_eDNA/DB/mai22/DB/LGC12Sdb-mai22-dada_tax_fullDB.fasta",
+      #                      # multithread=TRUE, 
+      #                      # tryRC=TRUE,
+      #                      # taxLevels = c("Kingdom","Phylum","Class",
+      #                                    # "Order", "Family", "Genus", 
+      #                                    # "Species","Specimen","Basin"),
+      #                      outputBootstraps = TRUE, verbose = TRUE )
+      
+
+
+R1_taxa <- dada2::assignTaxonomy(seqs = R1_seqtab.nochim,
+                                            refFasta =  "/home/heron/prjcts/eDNA_fish/DB/jun23/DB/LGC12Sdb-jun23-dada_tax_fullDB.fasta",
+
+                                            multithread=TRUE, tryRC=TRUE,
+                                            taxLevels = c("Kingdom","Phylum","Class","Order","Family",
+                                                          "Genus", "Species","Specimen","Basin"),
+                           outputBootstraps = TRUE, verbose = TRUE )
+
+
+
+R2_taxa <- dada2::assignTaxonomy(seqs = R2_seqtab.nochim,
+                                            refFasta =  "/home/heron/prjcts/eDNA_fish/DB/jun23/DB/LGC12Sdb-jun23-dada_tax_fullDB.fasta",
+
+                                            multithread=TRUE, tryRC=TRUE,
+                                            taxLevels = c("Kingdom","Phylum","Class","Order","Family",
+                                                          "Genus", "Species","Specimen","Basin"),
+                                 
+                          # refFasta =  "/home/heron/prjcts/fish_eDNA/data/refs/db/LGC/12S_BOLD_tax_10ranks.fasta",
+                          #  multithread=TRUE, tryRC=TRUE,taxLevels = c("DB","Kingdom","Phylum","Class","Order","Family", "Genus", "Species","Specimen","Basin"),
+                           outputBootstraps = TRUE, verbose = TRUE )
+
+# 
+R1_taxa$tax %>% View()
+      
+      
+      
+       
+      
+      
+      
+      
+      
+#convert dada2 exact species object to tibble
+mergers_csv_sp <- mergers_sps %>% 
+  as_tibble() %>% 
+  mutate(ASV = rownames(mergers_sps)) %>% 
+  dplyr::rename("Exact Genus (DADA2)" = "Genus",
+          "exact Species (DADA2)" = "Species")
+  
+
+#convert dada2 taxonomy object to tibble
+mergers_csv_taxa <- mergers_taxa$tax %>% 
+  as_tibble() %>% 
+  rename_with(.fn = ~paste0(., " (DADA2)")) %>% 
+  mutate(ASV = rownames(mergers_taxa$tax))
+
+
+#adding bootstrap & exact species
+mergers_csv_taxa_boot <- mergers_taxa$boot %>% 
+  as_tibble() %>% 
+  rename_with(.fn = ~paste0(., " (DADA2 bootstrap)")) %>% 
+  mutate(ASV = rownames(mergers_taxa$boot))
+
+      
+# #convert dada2 exact species object to tibble
+# concat_csv_sp <- concat_sps %>% 
+#   as_tibble() %>% 
+#   mutate(ASV = rownames(concat_sps)) %>% 
+#   dplyr::rename("Exact Genus (DADA2)" = "Genus",
+#           "exact Species (DADA2)" = "Species")
+#   
+# 
+# #convert dada2 taxonomy object to tibble
+# concat_csv_taxa <- concat_taxa$tax %>% 
+#   as_tibble() %>% 
+#   rename_with(.fn = ~paste0(., " (DADA2)")) %>% 
+#   mutate(ASV = rownames(concat_taxa$tax))
+# 
+# 
+# #adding bootstrap & exact species
+# concat_csv_taxa_boot <- concat_taxa$boot %>% 
+#   as_tibble() %>% 
+#   rename_with(.fn = ~paste0(., " (DADA2 bootstrap)")) %>% 
+#   mutate(ASV = rownames(concat_taxa$boot))
+
+      
+#convert dada2 exact species object to tibble
+R1_csv_sp <- R1_sps %>% 
+  as_tibble() %>% 
+  mutate(ASV = rownames(R1_sps)) %>% 
+  dplyr::rename("Exact Genus (DADA2)" = "Genus",
+          "exact Species (DADA2)" = "Species")
+  
+
+#convert dada2 taxonomy object to tibble
+R1_csv_taxa <- R1_taxa$tax %>% 
+  as_tibble() %>% 
+  rename_with(.fn = ~paste0(., " (DADA2)")) %>% 
+  mutate(ASV = rownames(R1_taxa$tax))
+
+
+#adding bootstrap & exact species
+R1_csv_taxa_boot <- R1_taxa$boot %>% 
+  as_tibble() %>% 
+  rename_with(.fn = ~paste0(., " (DADA2 bootstrap)")) %>% 
+  mutate(ASV = rownames(R1_taxa$boot))
+
+      
+#convert dada2 exact species object to tibble
+R2_csv_sp <- R2_sps %>% 
+  as_tibble() %>% 
+  mutate(ASV = rownames(R2_sps)) %>% 
+  dplyr::rename("Exact Genus (DADA2)" = "Genus",
+          "exact Species (DADA2)" = "Species")
+  
+
+#convert dada2 taxonomy object to tibble
+R2_csv_taxa <- R2_taxa$tax %>% 
+  as_tibble() %>% 
+  rename_with(.fn = ~paste0(., " (DADA2)")) %>% 
+  mutate(ASV = rownames(R2_taxa$tax))
+
+
+#adding bootstrap & exact species
+R2_csv_taxa_boot <- R2_taxa$boot %>% 
+  as_tibble() %>% 
+  rename_with(.fn = ~paste0(., " (DADA2 bootstrap)")) %>% 
+  mutate(ASV = rownames(R2_taxa$boot))
+
+
+
+
+
+
+
+
+
+
+# combine all
+mergers_csv_IDs <- mergers_csv_taxa %>% 
+  left_join(mergers_csv_taxa_boot,
+            by = "ASV") %>% 
+  left_join(mergers_csv_sp,
+            by = "ASV") %>% 
+  dplyr::select(c("ASV",
+           starts_with("King"),
+           starts_with("Phy"),
+           starts_with("Class"),
+           starts_with("Ord"),
+           starts_with("Fam"),
+           starts_with("Gen"),
+           starts_with("Species"),
+           starts_with("Specimen"),
+           starts_with("Basin"),
+           starts_with("Exac"),
+           )) %>% 
+   mutate(`Exact GenSp (DADA2)` = paste(`Exact Genus (DADA2)`,`exact Species (DADA2)`,sep=" "))
+  
+
+
+# # combine all
+# concat_csv_IDs <- concat_csv_taxa %>% 
+#   left_join(concat_csv_taxa_boot,
+#             by = "ASV") %>% 
+#   # left_join(concat_csv_sp,
+#   #           by = "ASV") %>% 
+#   dplyr::select(c("ASV",
+#            starts_with("King"),
+#            starts_with("Phy"),
+#            starts_with("Class"),
+#            starts_with("Ord"),
+#            starts_with("Fam"),
+#            starts_with("Gen"),
+#            starts_with("Species"),
+#            starts_with("Specimen"),
+#            starts_with("Basin"),
+#            starts_with("Exac"),
+#            )) 
+  
+
+
+
+
+
+
+
+# combine all
+R1_csv_IDs <- R1_csv_taxa %>% 
+  left_join(R1_csv_taxa_boot,
+            by = "ASV") %>% 
+  left_join(R1_csv_sp,
+            by = "ASV") %>% 
+  dplyr::select(c("ASV",
+           starts_with("King"),
+           starts_with("Phy"),
+           starts_with("Class"),
+           starts_with("Ord"),
+           starts_with("Fam"),
+           starts_with("Gen"),
+           starts_with("Species"),
+           starts_with("Specimen"),
+           starts_with("Basin"),
+           starts_with("Exac"),
+           )) %>% 
+   mutate(`Exact GenSp (DADA2)` = paste(`Exact Genus (DADA2)`,`exact Species (DADA2)`,sep=" "))
+  
+
+# combine all
+R2_csv_IDs <- R2_csv_taxa %>% 
+  left_join(R2_csv_taxa_boot,
+            by = "ASV") %>% 
+  left_join(R2_csv_sp,
+            by = "ASV") %>% 
+  dplyr::select(c("ASV",
+           starts_with("King"),
+           starts_with("Phy"),
+           starts_with("Class"),
+           starts_with("Ord"),
+           starts_with("Fam"),
+           starts_with("Gen"),
+           starts_with("Species"),
+           starts_with("Specimen"),
+           starts_with("Basin"),
+           starts_with("Exac"),
+           )) %>% 
+   mutate(`Exact GenSp (DADA2)` = paste(`Exact Genus (DADA2)`,`exact Species (DADA2)`,sep=" "))
+  
+
+
+
+
+
+#Save env
+   base::save.image("~/prjcts/ecomol/analyses/2023/WWF/env-WWF-25jul23.RData")
+```
+
+
+
+
+### Count reads and remaining ASVs
+
+
+```r
+# 17 - count reads proportion throughout the pipeline ----
+
+#preparing subtables with named rows to combine latter
+#raw files
+# 
+
+
+
+# 
+getN <- function(x) sum(getUniques(x))
+
+
+
+#raw files
+
+
+names(sample_idx_tbl$`Read file`) <- sample_idx_tbl$Unique_File_name
+
+raw_reads <- sample_idx_tbl %>%
+  unique() %>%
+  filter(Stage %in% c("FWD_R1","FWD_R2","REV_R1","REV_R2"))
+
+raw_reads_counts <- as_tibble()
+
+raw_reads$`Read file`[file.exists(raw_reads$`Read file`)] %>% length()
+
+raw_reads_counts <- ShortRead::countFastq(dirPath = raw_reads$`Read file`[file.exists(raw_reads$`Read file`)]) %>% 
+  as_tibble(rownames = "Read file") %>%
+  left_join(y = (raw_reads %>%  mutate(`Read file` = basename(`Read file`))
+                                                         ),by = "Read file") %>% 
+  select(c( Unique_File_name,records,Stage)) %>% 
+  unique() %>%
+  pivot_wider(names_from = "Stage",
+              values_from = "records")
+# %>% View()
+
+
+
+
+
+
+# 
+# 
+# 
+# for (readfile in 1:length(raw_reads$`Read file`)) {
+# 
+#   if (file.exists(raw_reads$`Read file`[readfile])) {
+# 
+#     file_reads_counts <-  ShortRead::countFastq(dirPath = raw_reads$`Read file`[readfile]) %>%
+#       as_tibble() %>%
+#       mutate("Unique_File_name" = raw_reads$Unique_File_name[readfile],
+#         "Stage" = raw_reads$Stage[readfile])
+# 
+# 
+#   }else{
+# 
+#     print( paste0("the file ",raw_reads$Unique_File_name[readfile]," does not exist"))
+# 
+#     }
+# 
+#   raw_reads_counts <- bind_rows(raw_reads_counts, file_reads_counts)
+# }
+# 
+# raw_reads_counts
+# 
+# 
+# 
+# 
+# raw_reads_counts <- raw_reads_counts %>%
+#   select(!c(nucleotides,scores)) %>% unique() %>% 
+#   mutate()
+#   pivot_wider(names_from = Stage,values_from = records)
+# #
+# #
+#
+
+
+
+
+
+#denoised ----
+
+# primer removed (for non demux only)
+
+tbl_Denoised_R1 <- (sapply(all_dadaFs, getN) %>% 
+                      as_tibble(rownames = "Unique_File_name")) %>% 
+  `colnames<-`(c("Unique_File_name", "Denoised (R1)")) %>% 
+  mutate(Unique_File_name = str_remove_all(string = Unique_File_name,
+                                           pattern = "-FWD|-REV"))
+
+tbl_Denoised_R2 <- (sapply(all_dadaRs, getN) %>% 
+                      as_tibble(rownames = "Unique_File_name")) %>% 
+  `colnames<-`(c("Unique_File_name", "Denoised (R2)")) %>% 
+  mutate(Unique_File_name = str_remove_all(string = Unique_File_name,
+                                           pattern = "-FWD|-REV"))
+
+#merged  ----
+
+tbl_Merged <- (rowSums(mergers_seqtab) %>% as_tibble(rownames = "Unique_File_name")) %>% `colnames<-`(c("Unique_File_name", "Merged"))
+
+#non-chimeric ----
+tbl_Non_chimeric_merged <- (rowSums(mergers_seqtab.nochim) %>% as_tibble(rownames = "Unique_File_name")) %>% `colnames<-`(c("Unique_File_name", "Non-chimeric Merged"))
+
+# concat ----
+tbl_concat <- (rowSums(concat_seqtab) %>% as_tibble(rownames = "Unique_File_name")) %>% `colnames<-`(c("Unique_File_name", "Concatenated"))
+
+#non-chimeric ----
+tbl_Non_chimeric_concat <- (rowSums(concat_seqtab.nochim) %>% as_tibble(rownames = "Unique_File_name")) %>% `colnames<-`(c("Unique_File_name", "Non-chimeric Concatenated"))
+
+tbl_Non_chimeric_R1 <- (rowSums(R1_seqtab.nochim) %>% as_tibble(rownames = "Unique_File_name")) %>% `colnames<-`(c("Unique_File_name", "Non-chimeric R1"))
+
+tbl_Non_chimeric_R2 <- (rowSums(R2_seqtab.nochim) %>% as_tibble(rownames = "Unique_File_name")) %>% `colnames<-`(c("Unique_File_name", "Non-chimeric R2"))
+
+
+
+
+# R1 and R2
+
+
+colnames(R2_seqtab) <- dada2:::rc(colnames(R2_seqtab)) # reverse-complement of read2
+              R1_R2_seqtab <- sumSequenceTables(table1 = R1_seqtab, table2 = R2_seqtab)
+              
+              dim(R1_R2_seqtab)
+
+              
+
+colnames(R2_seqtab.nochim) <- dada2:::rc(colnames(R2_seqtab.nochim)) # reverse-complement of read2
+              R1_R2_seqtab.nochim <- sumSequenceTables(table1 = R1_seqtab, table2 = R2_seqtab)
+              
+              dim(R1_R2_seqtab.nochim)
+
+              
+
+tbl_R1_R2 <- (rowSums(R1_R2_seqtab) %>% as_tibble(rownames = "Unique_File_name")) %>% `colnames<-`(c("Unique_File_name", "R1 + R2"))
+
+tbl_R1_R2.nochim <- (rowSums(R1_R2_seqtab.nochim) %>% as_tibble(rownames = "Unique_File_name")) %>% `colnames<-`(c("Unique_File_name", "Non-chimeric R1 + R2"))
+
+
+
+
+
+
+
+# combine all counts by sample to plot ----
+
+all_filtered_out_and_raw <- raw_reads_counts %>% 
+  left_join(y = all_filtered_out_wide,
+            by = "Unique_File_name") %>% 
+  dplyr::rename(
+    "Raw reads (R1)" = "FWD_R1",
+    "Raw reads (R2)" = "FWD_R2",
+    "Raw reads (pairs)"= "Raw reads (FWD pairs)",
+    "Paired reads (pairs)"= "Paired reads (FWD pairs)"
+                )
+
+
+
+all_track <- all_filtered_out_and_raw %>%
+  dplyr::select(-c(starts_with("Prop"))) %>%
+  left_join(tbl_Denoised_R1,by = "Unique_File_name") %>%
+  left_join(tbl_Denoised_R2,by = "Unique_File_name") %>%
+  left_join(tbl_Merged,by = "Unique_File_name") %>% 
+  left_join(tbl_Non_chimeric_merged,by = "Unique_File_name") %>%
+  # left_join(tbl_concat,by = "Unique_File_name") %>% 
+  # left_join(tbl_Non_chimeric_concat,by = "Unique_File_name") %>%
+  # left_join(tbl_R1_R2,by = "Unique_File_name") %>%
+  # left_join(tbl_R1_R2.nochim,by = "Unique_File_name") %>%
+  left_join(unique(sample_idx_tbl[c("Primer","Unique_File_name")]),by = "Unique_File_name") 
+
+all_track %>% colnames()
+
+        # all_track <- all_track %>% mutate("Total usable merged seqs/Raw reqs(%)" = (`Non-chimeric\nMerged`/((`FWD_R1` + `Raw (REV)`))*100))
+
+
+
+all_track <- all_track %>% left_join(primers_n_samples[,c("Unique_File_name","Project","Researcher","Type","Sample")],
+                                     by = "Unique_File_name")
+
+
+# Combine tables together (if there is more than one)
+track_tbl <- bind_rows(all_track)
+
+
+
+#save counts table
+writexl::write_xlsx(x = all_track,
+                    path = paste0(results_path,"/",prjct_rad,"-reads_and_seqs_counts",Sys.Date(),".xlsx"),
+                    col_names = TRUE,format_headers = TRUE)
+
+
+
+colnames(track_tbl) %>% paste0(collapse = '",\n"') %>% cat()
+# transform tibble to long format, better for ggplot
+  track_tbl <- track_tbl %>%
+    # dplyr::select(-c("Total usable merged seqs/Raw reqs(%)")) %>% 
+  gather(key = "Stage", 
+        value = "Read counts",
+        "Raw reads (R1)",
+        "Raw reads (R2)",
+        "Raw reads (pairs)", 
+        "Paired reads (pairs)", 
+        "Denoised (R1)",
+        "Denoised (R2)",
+        "Merged",
+        "Non-chimeric Merged"
+                  # "Concatenated",
+                  # "Non-chimeric Concatenated",
+                                                        # "R1 + R2",
+                                                        # "Non-chimeric R1 + R2"
+        ) %>%
+  mutate(Stage = factor(Stage, levels = c(
+    "Raw reads (R1)",
+    "Raw reads (R2)",
+    "Raw reads (pairs)",
+    "Paired reads (pairs)",
+    "Denoised (R1)",
+    "Denoised (R2)",
+    "Merged",
+    "Non-chimeric Merged"
+    # ,
+            # "Concatenated",
+            # "Non-chimeric Concatenated",
+                                                        # "R1 + R2",
+                                                        # "Non-chimeric R1 + R2"
+  ))) 
+
+    options(scipen = 22)
+  
+    
+    
+    
+# plot samples readssequences along the pipeline ---
+    
+    
+    
+    
+
+scales::show_col(viridis::viridis(n = 15))
+viridis10 <- (viridis::turbo(n = 15))
+# turbo6 <- viridis::turbo(n = 6)
+
+
+#multiple plots ---
+for (project in all_projects) {
+
+# project <- "Teles Pires"
+
+project_name <- project %>% str_replace_all(pattern = " ",
+                                        replacement = "_")
+
+  
+N_samples <-   primers_in_Nreads_long %>%
+  filter(str_detect(string = Project, pattern = project)) %>% 
+  pull(Unique_File_name) %>% unique() %>% length()
+
+  track_plot <- track_tbl %>% 
+  filter(str_detect(string = Project, pattern = project)) %>% 
+    # mutate(Unique_File_name = factor(Unique_File_name, levels =  sample_levels)) %>%
+    arrange(Unique_File_name) %>%
+    ggplot(aes(y = Stage,
+               x = `Read counts`, 
+               fill = Stage,
+               group = Unique_File_name)) +
+               # group = Sample)) +
+    geom_bar(stat="identity") + 
+    geom_hline(yintercept = 300000, col = 1, linetype = 2) +
+    scale_fill_manual(values = alpha(colour = rev(viridis10[c(1,2,4,5,7,8,10,11,13,14,15,15)]),
+    # scale_fill_manual(values = alpha(colour = rev(viridis10[c(1,2,5,7,8,11,13)]),
+                                     alpha =  0.75)) +
+    # labs(title = paste0(prjct_rad,"-",unique(smp_abd_ID_Final$Project)),
+    labs(title = paste0("EcoMol - ",prjct_rad, " - ", project),
+         subtitle = paste0("Number of sequences per library and Data cleaning/processing stage"
+                           # ,
+                           # " - Number of samples: ",
+                           # length(unique(track_tbl$Unique_File_name)
+                           #        )
+                           ),
+         x = "Number of sequences",
+         y = "Data processing stage") +
+    # geom_label() +
+    # facet_wrap(Primer~Sample, ncol = 8) +
+    facet_wrap(Primer~Unique_File_name, ncol = 12) +
+    # coord_fixed(ratio = 2000) +0
+    coord_fixed(ratio = max(track_tbl$`Read counts`,na.rm = T)/length(unique(track_tbl$Stage))*0.75) +
+    theme_bw(base_size = 8) +
+    theme(axis.text.x = element_text(angle = 90,hjust = 0.0001,
+                                     vjust = -0.00000000001,face = "bold")) +
+    theme(legend.position = "bottom") +
+    theme(axis.title = ggtext::element_markdown())
+
+# track_plot 
+
+# save plot
+ggsave(file = paste0(figs_path,"/",project_name,"-samples_track.pdf",collapse = ""),
+# ggsave(file = paste0(results_path,"/",
+#                      unique(smp_abd_ID_Final$Project),"/",
+#                      unique(smp_abd_ID_Final$Project),"-samples_track.pdf",collapse = ""),
+     plot = track_plot,
+     device = "pdf",
+     width = ifelse(N_samples <= 10, 10, 34),
+     height = ifelse(N_samples <= 10, 5, N_samples/5),
+     units = "cm", 
+     scale = 2,
+     dpi = 120)
+
+
+# knitr::plot_crop(x = paste0(figs_path,"/",project_name,"-samples_track.pdf",collapse = ""))
+
+
+}
+```
+
+
+<br><br>
+
+Here the **DADA2** pipeline ends.
+
+<br><br>
+   
+## Phyloseq
+
+On this step the ASVs associated to taxonomic ranks by **DADA2** and their respective counts by library, are combined using the **Phyloseq** package.
+
+<br>
+
+### Generate sample metadata table
+
+Here the experiment metadata is associated to each sample.
+
+
+```r
+# 22 - create sample table ----
+
+primers_n_samples %>% colnames()
+
+all_samdf <- primers_n_samples[,c("Project",
+                                  "Sample",
+                                  "Researcher",
+                                  # "Analysis",
+                                  "Unique_File_name",
+                                  "Primer",
+                                  "Lib",
+                                  "Type",
+                                  # "metadata_1", "metadata_2", "metadata_3", "metadata_4", "metadata_5", "metadata_6","obs",
+                                  "Metadata 1", "Metadata 2", "Metadata 3", "Metadata 4", "Metadata 5", "Metadata 6","obs",
+                                  "Extraction control",
+                                  "PCR control","Filtration control")] %>%  
+  unique() %>% as.data.frame()
+
+samdf <- all_samdf
+
+rownames(samdf) <- samdf$Unique_File_name
+```
+
+<br>
+
+This sample metadata table was created with the information available for the samples analyzed on this first run. This table must be customized for each experiment.
+
+<br><br>
+
+### **Phyloseq** data interpretation
+
+
+```r
+#23 - interpret dada on phyloseq ----
+rownames(samdf)
+str(samdf)
+
+dim(mergers_seqtab)
+dim(mergers_seqtab.nochim)
+
+
+
+mergers_ps <- phyloseq::phyloseq(phyloseq::otu_table(mergers_seqtab.nochim, taxa_are_rows = FALSE),
+                                 phyloseq::sample_data(samdf),
+                                 phyloseq::tax_table(mergers_taxa$tax))
+
+# concat_ps <- phyloseq::phyloseq(phyloseq::otu_table(concat_seqtab.nochim, taxa_are_rows = FALSE),
+#                                  phyloseq::sample_data(samdf),
+#                                  phyloseq::tax_table(concat_taxa$tax))
+
+
+R1_ps <- phyloseq::phyloseq(phyloseq::otu_table(R1_seqtab.nochim, taxa_are_rows = FALSE),
+                            phyloseq::sample_data(samdf),
+                            phyloseq::tax_table(R1_taxa$tax))
+
+R2_ps <- phyloseq::phyloseq(phyloseq::otu_table(R2_seqtab.nochim, taxa_are_rows = FALSE),
+                            phyloseq::sample_data(samdf),
+                            phyloseq::tax_table(R2_taxa$tax))
+```
+
+
+<br>
+
+### Merge and Flex Phyloseq results 
+
+Many different graphics can be generated, together or in isolation, for all primers/libraries and taxonomic ranks.
+
+
+```r
+#24 - merge ps analisys ----
+# combine all pyloseq objects in one
+# by doing so, all ASVs will be combined and some will have 0 abundance
+mergers_ps_tbl <- phyloseq::psmelt(mergers_ps) %>% 
+  as_tibble() %>% 
+  mutate(`Read origin` = "merged") %>% 
+  filter(Abundance >= 1)
+
+
+# concat_ps_tbl <- phyloseq::psmelt(concat_ps) %>% 
+#   as_tibble() %>% 
+#   mutate(`Read origin` = "concat")   %>% 
+#   filter(Abundance >= 1)
+
+R1_ps_tbl <- phyloseq::psmelt(R1_ps) %>% 
+  as_tibble() %>% 
+  mutate(`Read origin` = "R1") %>%  
+  filter(Abundance >=1) 
+
+R2_ps_tbl <- phyloseq::psmelt(R2_ps) %>% 
+  as_tibble() %>% 
+  mutate(`Read origin` = "R2") %>%  
+  filter(Abundance >=1) 
+
+
+
+#combine ps tables from all ASVs inputs
+all_ps_tbl <- bind_rows(
+  mergers_ps_tbl,
+  # R1_ps_tbl, R2_ps_tbl,
+  # ,concat_ps_tbl
+                        ) %>% 
+  dplyr::rename("ASV" = "OTU") %>% 
+  select(-c("Sample")) %>%  
+  dplyr::rename("Sample" = "sample_Sample")
+
+# mergers_ps_tbl <- left_join(by = "ASV",x=mergers_ps_tbl,y= mergers_csv_taxa)
+
+all_ps_tbl$ASV %>% unique()
+#clear zero abundance rows
+
+
+mergers_ps_tbl$Sample %>%  unique()
+
+mergers_ps_tbl$Primer %>%  unique()
+
+#concatenate exact species table 
+
+# only if DADA2 identification is required
+# mergers_ps_tbl <- left_join(by = "ASV",  #####mudei pra parte depois de onde entra a taxonomia do blast
+#                         x = mergers_ps_tbl,
+#                         y = mergers_csv_IDs)
+
+colnames(mergers_ps_tbl)
+
+
+# here we would bind the tables generated for R1, R2 and concatenated ASVs, if existing
+```
+
+
+#calculate sample abundances ----
+
+
+```r
+{
+  all_ps_tbl <- all_ps_tbl %>%
+  mutate("Relative abundance to all samples" = 0,
+         "Relative abundance on sample" = 0,
+         "Sample total abundance" = 0)
+  
+  abd_total <- sum(all_ps_tbl$Abundance)
+  
+  all_ps_tbl <- all_ps_tbl %>%
+    dplyr::group_by(Unique_File_name,`Read origin`) %>%        #now the abundance on sample is for merged/R1/R2 separetely
+    mutate("Sample total abundance" = sum(Abundance),
+           "Relative abundance to all samples" = round((Abundance/abd_total),digits = 4),
+           "Relative abundance on sample" =  round((Abundance/`Sample total abundance`),digits = 4)) %>%
+    relocate(`Sample total abundance`,`Relative abundance to all samples`,`Relative abundance on sample`) %>% 
+    ungroup()
+
+}
+```
+
+# check ASVs legths pre BLAST
+
+
+```r
+all_ps_tbl <- all_ps_tbl %>%
+  mutate("ASV Size (pb)" = nchar(ASV))
+
+# Tamanho das ASVs por amostra e Read origin ---- 
+scales::show_col(viridis::viridis(n=10))
+scales::show_col(viridis::turbo(n=12))
+
+
+ASV_legth_by_Sample <- all_ps_tbl %>%
+  # mutate(Sample=factor(Sample,levels = sample_levels)) %>% 
+  ggplot(aes(y=Unique_File_name,
+             x=`ASV Size (pb)`,
+             col = `Read origin`,
+             size =`Relative abundance on sample`,
+             alpha = 0.25
+             )) +
+  geom_jitter(height = 0.3,
+              width = 0.3) +
+  scale_x_continuous(breaks = c(seq(20,
+                                    max(all_ps_tbl$`ASV Size (pb)`),10)),
+  # scale_x_continuous(breaks = c(seq(20,280,10)),
+                     expand = c(0.02,0.02)) +
+  scale_shape_manual(name = "Identification\n     satatus",
+                                             values = c(21,4),
+                                             labels=c("BLAST IDed","no ID")) +
+  scale_color_manual(values = c(viridis::turbo(n=12)[c(3,6,9,12)]))+
+  xlab("Tamanho da ASV (pb)") +
+  ylab("Amostra") +
+  ggtitle(label = "Ecomol - iSeq16_03112022 - piloto WWF",
+          subtitle = "Distribution of ASVs size and Read originper Sample considering all identified ASVs") +
+  theme_bw(base_size = 8) +
+  theme(legend.position = "right")+
+  geom_vline(xintercept = c(10,max(all_ps_tbl$`ASV Size (pb)`))) +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1)) +
+# +
+#   guides(alpha="none",
+#          color="none") 
+# +
+  facet_grid(rows = vars(Primer,Type),scales ='free_y', space ='free_y')
+  
+ASV_legth_by_Sample
+dev.off()
+
+
+ggsave(file = paste0(figs_path,"/",prjct_rad,"-ASV_length_by_sample-ALL-ASVs-IDs.pdf",collapse = ""),
+     plot = ASV_legth_by_Sample,
+     device = "pdf",
+     width = 50,
+     height = 80,
+     units = "cm",
+     dpi = 600)
+```
+
+
+
+
+#BLASTn identification
+
+
+```r
+# blastn ----
+## Annotate all ASVs by blastN
+### select ASVs for BLASTn search ----
+
+
+
+asvs_blast_all <- all_ps_tbl %>%
+  # filter(!`Read origin` %in% c("concat")) %>% 
+  unique() %>% 
+  pull(ASV) %>% 
+  unique() %>% as.character()
+
+
+
+asvs_blast_all
+# # 
+# # 
+# blast_res_old1 <- readRDS(file = "/home/heron/prjcts/ecomol/analyses/EM112_SP_R1/results/blast/blast_out_res1.RDS")
+# blast_res_old2 <- readRDS(file = "/home/heron/prjcts/ecomol/analyses/EM112_SP_R1/results/blast/blast_out_res2.RDS")
+# blast_res_old3 <- readRDS(file = "/home/heron/prjcts/ecomol/analyses/EM112_SP_R1/results/blast/blast_out_res3.RDS")
+# blast_res_old4 <- readRDS(file = "/home/heron/prjcts/ecomol/analyses/EM112_SP_R1/results/blast/blast_out_res4.RDS")
+# blast_res_old5 <- readRDS(file = "/home/heron/prjcts/ecomol/analyses/EM112_SP_R1/results/blast/blast_out_res5.RDS")
+# blast_res_old6 <- readRDS(file = "/home/heron/prjcts/ecomol/analyses/iSeq16_03112022_CIAT_pilotoWWF/COIr1_blast_res.RDS")
+# 
+# #
+# blast_res_0 <- bind_rows(blast_res_old1, blast_res_old2, blast_res_old3, blast_res_old4, blast_res_old5, blast_res_old6)
+# 
+# 
+# 
+# asvs_blast_all_coi_new <- asvs_blast_all[!asvs_blast_all %in% c(unique(blast_res_0$OTU))]
+# 
+
+
+length(asvs_blast_all)
+
+library(BLASTr)
+   
+
+
+asvs_blast_all %>% nchar() %>% table() %>% plot()
+
+
+
+
+
+#parte 1 ----
+# paralela com 2 threads ----
+tictoc::tic("Parallel - Furrr 2 threads")
+
+blast_res_1 <- BLASTr::parallel_blast(
+  db_path = "/data/databases/nt_jun2023/nt",
+  asvs = asvs_blast_all,
+  out_file = "~/prjcts/ecomol/analyses/2023/WWF/results/blast/blast_out_res_1.csv",
+  out_RDS = "~/prjcts/ecomol/analyses/2023/WWF/results/blast/blast_out_res_1.RDS",
+  total_cores = 80,
+  perc_id = 80,
+  num_threads = 2,
+  perc_qcov_hsp = 80,
+  num_alignments = 3,
+  blast_type = "blastn"
+)
+
+tictoc::toc()# 
+
+
+# #Save env
+   base::save.image("~/prjcts/ecomol/analyses/2023/WWF/env-WWF_posBLAST-20set23.RData")
+
+   
+# 
+# #parte 2 ----
+# # paralela com 2 threads ----
+# tictoc::tic("Parallel - Furrr 2 threads")
+# 
+# blast_res_2 <- BLASTr::parallel_blast(
+#   db_path = "/data/databases/nt_jun2023/nt",
+#   asvs = asvs_blast_all[10001:20000],
+#   out_file = "~/prjcts/ecomol/analyses/2023/WWF/results/blast/blast_out_res_2.csv",
+#   out_RDS = "~/prjcts/ecomol/analyses/2023/WWF/results/blast/blast_out_res_2.RDS",
+#   total_cores = 80,
+#   perc_id = 80,
+#   num_threads = 2,
+#   perc_qcov_hsp = 80,
+#   num_alignments = 3,
+#   blast_type = "blastn"
+# )
+# 
+# tictoc::toc()# 
+# 
+# 
+# # #Save env
+#    base::save.image("~/prjcts/ecomol/analyses/2023/WWF/env-WWF_posBLAST-16ago23-2.RData")
+# 
+#    
+# 
+# #parte 3 ----
+# # paralela com 2 threads ----
+# tictoc::tic("Parallel - Furrr 2 threads")
+# 
+# blast_res_3 <- BLASTr::parallel_blast(
+#   db_path = "/data/databases/nt_jun2023/nt",
+#   asvs = asvs_blast_all[20001:30000],
+#   out_file = "~/prjcts/ecomol/analyses/2023/WWF/results/blast/blast_out_res_3.csv",
+#   out_RDS = "~/prjcts/ecomol/analyses/2023/WWF/results/blast/blast_out_res_3.RDS",
+#   total_cores = 80,
+#   perc_id = 80,
+#   num_threads = 2,
+#   perc_qcov_hsp = 80,
+#   num_alignments = 3,
+#   blast_type = "blastn"
+# )
+# 
+# tictoc::toc()# 
+# 
+# 
+# # #Save env
+#    base::save.image("~/prjcts/ecomol/analyses/2023/WWF/env-WWF_posBLAST-16ago23-3.RData")
+# 
+#    
+# 
+# #parte 4 ----
+# # paralela com 2 threads ----
+# tictoc::tic("Parallel - Furrr 2 threads")
+# 
+# blast_res_4 <- BLASTr::parallel_blast(
+#   db_path = "/data/databases/nt_jun2023/nt",
+#   asvs = asvs_blast_all[30001:40000],
+#   out_file = "~/prjcts/ecomol/analyses/2023/WWF/results/blast/blast_out_res_4.csv",
+#   out_RDS = "~/prjcts/ecomol/analyses/2023/WWF/results/blast/blast_out_res_4.RDS",
+#   total_cores = 80,
+#   perc_id = 80,
+#   num_threads = 2,
+#   perc_qcov_hsp = 80,
+#   num_alignments = 3,
+#   blast_type = "blastn"
+# )
+# 
+# tictoc::toc()# 
+# 
+# 
+# # #Save env
+#    base::save.image("~/prjcts/ecomol/analyses/2023/WWF/env-WWF_posBLAST-16ago23-4.RData")
+# 
+#    
+# 
+# #parte 5 ----
+# # paralela com 2 threads ----
+# tictoc::tic("Parallel - Furrr 2 threads")
+# 
+# blast_res_5 <- BLASTr::parallel_blast(
+#   db_path = "/data/databases/nt_jun2023/nt",
+#   asvs = asvs_blast_all[40001:49696],
+#   out_file = "~/prjcts/ecomol/analyses/2023/WWF/results/blast/blast_out_res_5.csv",
+#   out_RDS = "~/prjcts/ecomol/analyses/2023/WWF/results/blast/blast_out_res_5.RDS",
+#   total_cores = 80,
+#   perc_id = 80,
+#   num_threads = 2,
+#   perc_qcov_hsp = 80,
+#   num_alignments = 3,
+#   blast_type = "blastn"
+# )
+# 
+# tictoc::toc()# 
+# 
+# 
+# # #Save env
+#    base::save.image("~/prjcts/ecomol/analyses/2023/WWF/env-WWF_posBLAST-16ago23-5.RData")
+# 
+#    
+
+
+
+# 
+# # saveRDS(object = blast_res1,
+# saveRDS(object = blast_res,
+#         file = "~/prjcts/ecomol/analyses/2023/WWF/results/blast/BLAST_res-MiBird_12SV5.rds")
+
+
+
+# blast_res1 <- readRDS(file = "~/prjcts/ecomol/analyses/2023/WWF/results/BLAST_res1.rds")
+
+
+# blast_res_full <- bind_rows(blast_res1)
+
+
+colnames(blast_res_1)
+
+# blast_res <- blast_res %>% rename("OTU" ="Sequence")
+# blast_res <- blast_res %>% rename("Sequence" ="OTU")
+
+blast_res_full <- bind_rows(
+  blast_res_1,
+  # blast_res_2,
+  # blast_res_3,
+  # blast_res_4,
+  # blast_res_5
+  
+) %>% 
+  select(-c("OTU")) %>%
+  filter(!is.na(`1_subject header`))
+# blast_res_full <- bind_rows(blast_res_mif,blast_res_COI) %>% select(-c("OTU"))
+
+# blast_res_full <- blast_res %>% select(-c("OTU")) %>% filter(!is.na(`1_subject header`))
+```
+
+
+### retrieving complete taxonomies for blast res
+
+```r
+#overview the identifications ----
+blast_res_full$`1_subject header` %>% unique() %>% sort()
+
+#set hits with poor names to remove from results
+bad_1res_IDs <- c(
+  "Uncultured organism clone",
+  "Uncultured prokaryote",
+  "Eukaryotic synthetic construct",
+  "16S rRNA amplicon fragment",
+  "Uncultured Candidatus",
+  "Uncultured bacterium",
+  "Uncultured archaeon clone",
+  "Complete Metagenome-Assembled"
+  ) %>% 
+  paste0(collapse = "|")
+
+
+blast_res_full <- blast_res_full %>%
+  mutate("blast ID" = "blast ID",
+         "blast ID Origin" = "blast ID Origin",
+         "query_taxID" = "query_taxID")
+
+
+# pick BLASTn res IDs and mark result origin ----
+
+for (asv in 1:nrow(blast_res_full)) {
+  
+  if (stringr::str_detect(string = blast_res_full$`1_subject header`[asv],pattern = bad_1res_IDs) & 
+      !is.na(blast_res_full$`2_subject header`[asv])) {
+    
+    blast_res_full$`blast ID`[asv] <- substr(as.character(blast_res_full$`2_subject header`[asv]),1,40)
+    blast_res_full$`blast ID Origin`[asv] <- "2_"
+    blast_res_full$query_taxID[asv] <- blast_res_full$`2_staxid`[asv]
+    
+      if (stringr::str_detect(string = blast_res_full$`2_subject header`[asv],pattern = bad_1res_IDs) & 
+      !is.na(blast_res_full$`3_subject header`[asv])) {
+        
+        blast_res_full$`blast ID`[asv] <- substr(as.character(blast_res_full$`3_subject header`[asv]),1,40)
+        blast_res_full$`blast ID Origin`[asv] <- "3_"
+        blast_res_full$query_taxID[asv] <- blast_res_full$`3_staxid`[asv]
+      
+            if (stringr::str_detect(string = blast_res_full$`3_subject header`[asv],pattern = bad_1res_IDs)) {
+            
+            blast_res_full$`blast ID`[asv] <- "Match_not_reliable"
+            blast_res_full$`blast ID Origin`[asv] <- NA
+            blast_res_full$query_taxID[asv] <- NA
+          }
+      } 
+  } else {
+    if (stringr::str_detect(string = blast_res_full$`1_subject header`[asv],pattern = bad_1res_IDs) & 
+      is.na(blast_res_full$`2_subject header`[asv])) {
+      
+      blast_res_full$`blast ID`[asv] <- "Match_not_reliable"
+      blast_res_full$`blast ID Origin`[asv] <- NA
+      blast_res_full$query_taxID[asv] <- NA
+      
+      }else{
+        blast_res_full$`blast ID`[asv] <- substr(as.character(blast_res_full$`1_subject header`[asv]),1,40)
+        blast_res_full$`blast ID Origin`[asv] <- "1_"
+        blast_res_full$query_taxID[asv] <- blast_res_full$`1_staxid`[asv]
+      }
+  }
+}
+  
+
+
+
+blast_res_full$`blast ID` %>% unique() %>% sort()
+blast_res_full$`blast ID Origin` %>% table() 
+
+
+
+blast_res_full$`blast ID`<-  blast_res_full$`blast ID` %>% 
+  stringr::str_remove(pattern = "^  |^ |Uncultured |uncultured |Candidatus |MAG:|MAG: |MAG TPA_asm: |TPA_asm: |^Cf. |\n|candidate division ") %>% 
+  stringr::str_remove(pattern = "^  |^ |Uncultured |uncultured |Candidatus |MAG:|MAG: |MAG TPA_asm: |TPA_asm: |^Cf. |\n|candidate division ") %>% 
+  stringr::str_remove_all(pattern = "\\[|\\]") %>% 
+  # stringr::str_remove(pattern = "\\:.*.$") %>% 
+  stringr::str_replace(pattern = "cf\\. ",replacement = "") %>% 
+  stringr::str_replace(pattern = "nr\\. ",replacement = "") %>% 
+  stringr::str_replace(pattern = "sp\\. ",replacement = "sp\\.") %>% 
+  stringr::str_replace(pattern = "\\,",replacement = "") %>% 
+  stringr::str_replace(pattern = "sp\\.",replacement = "sp\\. ")
+
+
+# blast_res_full_bckp2 <- blast_res_full
+# blast_res_full <- blast_res_full_bckp2
+
+
+
+blast_res_full$`blast ID` %>% unique() %>% sort()
+blast_res_full$`blast ID` %>% unique() %>% sort(decreasing = T)
+
+
+
+
+
+# selecting just the first 2 names of BLAST result
+for (row in 1:nrow(blast_res_full)) {
+
+  blast_res_full$`blast ID`[row] <- stringr::str_split_fixed(string = blast_res_full$`blast ID`[row], pattern = " ",n = 3)[1:2] %>% 
+    paste0(collapse = " ")
+
+}
+
+
+
+blast_res_full$`blast ID` %>% unique() %>% sort()
+
+
+
+
+
+
+
+# correct confusing labels to unify identities ----
+# 
+blast_res_full$`blast ID`[blast_res_full$`blast ID` %in% c("Human DNA",
+                                                           "Eukaryotic synthetic",
+                                                           "Human chromosome")] <- "Homo sapiens"
+
+  blast_res_full$`blast ID` %>% unique() %>% sort()
+  
+  
+  blast_res_full %>% filter(`blast ID` %in% c(" ")) %>% View()
+```
+
+
+
+
+### Retrieve complete taxonomy 
+
+
+```r
+# greate a genus colum to be able to join tax results
+
+
+# blast_res_full_bckp3 <- blast_res_full
+
+
+blast_res_full$`blast ID` %>% unique() %>% sort()
+
+
+blast_res_full <- blast_res_full %>%
+  mutate(max_tax = case_when(str_detect(`blast ID`,pattern = "PREDICTED:") ~ paste0(str_remove(`blast ID`,pattern = "PREDICTED: ")," (PREDICTED)"),
+                                                                        TRUE ~  str_remove(`blast ID`,pattern = " .*$")))
+
+
+
+# unique(blast_res_full$max_tax)[unique(blast_res_full$max_tax) %in% ambiguos_tx]
+
+
+
+# 
+# blast_res_full <- blast_res_full %>% 
+#   mutate("max_tax" = dplyr::if_else(.$max_tax %in% ambiguos_tx,.$`blast ID`,.$max_tax))
+# 
+# 
+# 
+# 
+
+
+ blast_res_full <- blast_res_full %>%
+  relocate(`blast ID`,`blast ID Origin`,`query_taxID`,`max_tax`)
+
+
+
+
+#pós ajustes ----
+ 
+ 
+ {
+# blast_res_full$max_tax[blast_res_full$max_tax %in% c("Achlya oligacantha")] <- "Newbya oligocantha"
+# blast_res_full$max_tax[blast_res_full$max_tax %in% c("Achlya spinosa")] <- "Newbya spinosa"
+# blast_res_full$max_tax[blast_res_full$max_tax %in% c("Alticinae")] <- "Alticini"
+# blast_res_full$max_tax[blast_res_full$max_tax %in% c("Rhodococcus sp. R79")] <- "Rhodococcus pseudokoreensis"
+# blast_res_full$max_tax[blast_res_full$max_tax %in% c("Rhodococcus sp. S2-17")] <- "Rhodococcus oxybenzonivorans"
+# blast_res_full$max_tax[blast_res_full$max_tax %in% c("Hygrotus decoratus")] <- "Clemnius decoratus"
+# blast_res_full$max_tax[blast_res_full$max_tax %in% c("Carlia")] <- "Carlia vivax"
+# blast_res_full$max_tax[blast_res_full$max_tax %in% c("Chthonius")] <- "Chthonius ischnocheles"
+# # blast_res_full$max_tax[blast_res_full$max_tax %in% c("Verticia")] <- "Verticia orientalis"
+# 
+# orgs2search[!orgs2search %in% (taxons_tbl$max_tax %>% unique())] %>% sort() %>% paste0(collapse = '"\n"') %>% cat()
+# 
+# 
+
+}
+
+#----
+
+
+blast_res_full$max_tax %>% unique() %>% sort()
+
+
+
+
+# FUNCTION to retrieve tax ranks using organism genus or genus+species ----
+#test ----
+      #this is not being used, as we are using now the one for tax IDs 
+       # source("~/prjcts/ecomol/R/extract_taxonomy_name.R")
+       # extract_taxonomy_name("Homo")
+ 
+# FUNCTION to retrieve tax ranks using organism taxID ----
+#test ----
+ source("/home/heron/prjcts/ecomol/R/extract_taxonomy_taxID.R")
+ 
+#caraaaaalhoooooooo ta comendo o primeiro caracterpq?????
+ extract_taxonomy_taxID("2978354")
+ 
+ 
+ 
+#buscando as classificações
+
+
+  future::plan(future::multisession(),      workers = 78)
+  
+
+  
+  
+ taxIDs2search <- blast_res_full$query_taxID %>% unique() %>% na.omit() %>% as.character()
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ taxIDs2search %>% class()
+ 
+  taxonomy_df <- furrr::future_map_dfr(.x = taxIDs2search,
+                                         .f = extract_taxonomy_taxID,
+                                         .options = furrr::furrr_options(seed = TRUE))
+  
+  
+  # (A) chech the ones that have not been retrieved
+  taxIDs2search[!(taxIDs2search %in% c(unique(taxonomy_df$query_taxID)))]
+  
+  # (B) search the missing ones
+  
+  taxonomy_df1 <- furrr::future_map_dfr(.x = taxIDs2search[!(taxIDs2search %in% c(unique(taxonomy_df$query_taxID)))],
+                                         .f = extract_taxonomy_taxID,
+                                         .options = furrr::furrr_options(seed = TRUE))
+  
+  # (C) combine the results
+  taxonomy_df <-  bind_rows(taxonomy_df,taxonomy_df1) %>% unique()
+  
+  # (D) check if is there any other still missing
+  taxIDs2search[!(taxIDs2search %in% c(unique(taxonomy_df$query_taxID)))]
+  
+  # (E) repeat A, B, C and D until no one is missing
+  
+  
+  
+  #the only problematic one!!!!!!!!
+  # taxIDs2search[taxIDs2search == "2114048"] <- "2978354"
+  # blast_res_full$`1_staxid`[blast_res_full$`1_staxid` == "2114048"] <- "2978354"
+  # 
+  # #baridinae - curculionidae
+  # taxIDs2search[taxIDs2search == "2920721"] <- "122838"
+  # blast_res_full$`1_staxid`[blast_res_full$`1_staxid` == "2920721"] <- "122838"
+  
+  
+  
+  
+  
+  # taxonomy_df_bckp <- taxonomy_df
+  
+  
+  taxonomy_df <- taxonomy_df %>% 
+    filter(!Rank %in% c("no rank","clade"))
+
+
+taxonomy_tbl <- taxonomy_df %>% 
+  # select(-c("TaxId","Sci_name")) %>%
+  dplyr::select(-c("TaxId")) %>%
+  unique() %>%
+  # dplyr::filter(Rank %in% c("kingdom","phylum","class","order","family")) %>%
+  filter(Rank %in% c("superkingdom","kingdom","phylum","subphylum","class","subclass","order","suborder","family","subfamily","genus")) %>% 
+    tidyr::pivot_wider(
+      id_cols = c(query_taxID,Sci_name),
+                       names_from = Rank,
+                       values_from = c(ScientificName)) %>%
+    # tidyr::pivot_wider(names_from = Rank,values_from = c(ScientificName,TaxId)) %>%
+    # dplyr::select(max_tax,dplyr::starts_with("Scie")) %>% 
+  relocate("Sci_name","query_taxID","superkingdom","kingdom","phylum","subphylum","class","subclass","order","suborder","family","subfamily","genus")
+
+
+
+saveRDS(object = taxonomy_tbl,
+        file = paste0(results_path,"/taxonomy_df_from_taxIDs.rds"))
+
+
+
+taxonomy_tbl <- readRDS(file = paste0(results_path,"/taxonomy_df_from_taxIDs.rds"))
+
+
+
+
+
+
+
+# complete taxonomy tbl missing ranks
+
+
+
+# taxonomy_tbl_bckp <- taxonomy_tbl
+# orgs_tbl_bckp <- orgs_tbl
+
+
+taxonomy_tbl %>% colnames() %>% paste0(collapse = "\n") %>% cat()
+#fill NA tax with combination of max_tax and rank
+for (line in 1:nrow(taxonomy_tbl)) {
+  # if (taxonomy_tbl$genus[line] %in% c("NA",NA,"")) {
+  if (taxonomy_tbl$superkingdom[line] %in% c("NA",NA,"")) {
+    taxonomy_tbl$superkingdom[line] <- paste0("superkingdom of ", taxonomy_tbl$kingdom[line]) }
+  
+  if (taxonomy_tbl$kingdom[line] %in% c("NA",NA,"")) {
+    taxonomy_tbl$kingdom[line] <- paste0("kingdom of ", taxonomy_tbl$superkingdom[line]) }
+  
+  if (taxonomy_tbl$phylum[line] %in% c("NA",NA,"")) {
+    taxonomy_tbl$phylum[line] <- paste0("phylum of ", taxonomy_tbl$kingdom[line]) }
+  
+  if (taxonomy_tbl$subphylum[line] %in% c("NA",NA,"")) {
+    taxonomy_tbl$subphylum[line] <- paste0("subphylum of ", taxonomy_tbl$phylum[line]) }
+  
+  if (taxonomy_tbl$class[line] %in% c("NA",NA,"")) {
+    taxonomy_tbl$class[line] <- paste0("class of ", taxonomy_tbl$subphylum[line]) }
+  
+  if (taxonomy_tbl$subclass[line] %in% c("NA",NA,"")) {
+    taxonomy_tbl$subclass[line] <- paste0("subclass of ", taxonomy_tbl$class[line]) }
+  
+  if (taxonomy_tbl$order[line] %in% c("NA",NA,"")) {
+    taxonomy_tbl$order[line] <- paste0("order of ", taxonomy_tbl$subclass[line]) }
+  
+  if (taxonomy_tbl$suborder[line] %in% c("NA",NA,"")) {
+    taxonomy_tbl$suborder[line] <- paste0("suborder of ", taxonomy_tbl$order[line]) }
+  
+  if (taxonomy_tbl$family[line] %in% c("NA",NA,"")) {
+    taxonomy_tbl$family[line] <- paste0("family of ", taxonomy_tbl$suborder[line]) }
+  
+  if (taxonomy_tbl$subfamily[line] %in% c("NA",NA,"")) {
+    taxonomy_tbl$subfamily[line] <- paste0("subfamily of ", taxonomy_tbl$family[line]) }
+  
+  if (is.na(taxonomy_tbl$genus[line])) {
+    taxonomy_tbl$genus[line] <- paste0("genus of ", taxonomy_tbl$subfamily[line]) }
+# 
+
+}
+
+
+taxonomy_tbl %>% colnames() %>% paste0(collapse = '",\n"') %>% cat()
+
+taxonomy_tbl <- taxonomy_tbl %>% 
+  dplyr::rename(
+    "Superkingdom (BLASTn)" = "superkingdom",
+    "Kingdom (BLASTn)" = "kingdom",
+    "Phylum (BLASTn)" = "phylum",
+    "Subphylum (BLASTn)" = "subphylum",
+    "Class (BLASTn)" = "class",
+    "Subclass (BLASTn)" = "subclass",
+    "Order (BLASTn)" = "order",
+    "Suborder (BLASTn)" = "suborder",
+    "Family (BLASTn)" = "family",
+    "Subfamily (BLASTn)" = "subfamily",
+    "Genus (BLASTn)" = "genus")
+
+
+
+
+
+
+
+# taxonomy_tbl_bckp2 <- taxonomy_tbl
+
+#10- bind tax rank cols to DB_tbl ----
+blast_res_tax <- left_join(x = blast_res_full, 
+                           y = taxonomy_tbl,
+                           by = "query_taxID")
+
+
+
+blast_res_tax[is.na(blast_res_tax$`Superkingdom (BLASTn)`),] %>% View()
+
+
+
+
+all_ps_tbl %>% unique()
+
+blast_res_tax %>% filter(`Genus (BLASTn)` %in% c(NA)) %>% View()
+
+
+
+blast_res_full %>% colnames()
+
+
+
+saveRDS(object = blast_res_tax,file = "~/prjcts/ecomol/analyses/2023/WWF/blast_res_tax_533_seqs.rds")
+
+# 
+# 
+# 
+# 
+# all_ps_tbl_blast_controls$`blast ID` %>% unique()
+# all_ps_tbl_blast$`Final ID (BLASTn)` %>% unique()
+```
+
+#combine BLAST and DADA2 results ----
+
+
+```r
+colnames(blast_res_tax)[colnames(blast_res_tax) == "Sequence"] <- "ASV"
+# colnames(blast_res_tax)[colnames(blast_res_tax) == "OTU"] <- "ASV"
+
+
+ 
+all_ps_tbl_blast <- left_join(x = all_ps_tbl,y = blast_res_tax,by = "ASV") %>% 
+  filter(Abundance > 0)
+
+# all_ps_tbl_blast <- left_join(x = all_ps_tbl %>% filter(Primer %in% c("COIr1")),
+#                               y = blast_res_tax,by = "ASV")     #MiFish
+colnames(all_ps_tbl_blast)
+
+# all_ps_tbl_blast_bckp <- all_ps_tbl_blast
+# all_ps_tbl_blast <- all_ps_tbl_blast_bckp
+```
+
+
+# Remove uninformative columns from complete results table
+
+
+```r
+# If the identifications did not use DADA2 results, remove corresponding columns to make files and tables lighter
+
+
+all_ps_tbl_blast %>% colnames() %>% paste0(collapse = '",\n"') %>% cat()
+
+
+
+all_ps_tbl_blast <- all_ps_tbl_blast %>%
+  dplyr::select(-c(
+    # "DB",
+    "Kingdom",
+    "Phylum",
+    "Class",
+    "Order",
+    "Family",
+    "Genus",
+    "Species",
+    "Specimen",
+    "Basin",
+    # "Read origin",
+    # # "(DADA2 bootstrap)DB",
+    # "(DADA2 bootstrap)Kingdom",
+    # "(DADA2 bootstrap)Phylum",
+    # "(DADA2 bootstrap)Class",
+    # "(DADA2 bootstrap)Order",
+    # "(DADA2 bootstrap)Family",
+    # "(DADA2 bootstrap)Genus",
+    # "(DADA2 bootstrap)Species",
+    # "(DADA2 bootstrap)Specimen",
+    # "(DADA2 bootstrap)Basin",
+    # "exact Genus",
+    # "exact Species"
+    ))
+
+
+
+# add DADA results: MiFish only ----
+
+
+# novo local de entrada da taxonomia do DADA2
+      all_ps_tbl_blast <- all_ps_tbl_blast %>%
+        left_join(y = mergers_csv_IDs, by = "ASV") %>% 
+        filter(Abundance > 0)
+
+colnames(all_ps_tbl_blast)
+```
+
+
+
+
+# Final ID 
+
+
+```r
+#all_ps_tbl_blast_bckp2 <- all_ps_tbl_blast
+#all_ps_tbl_blast <- all_ps_tbl_blast_bckp2 
+
+# DADA2 final identification ----
+
+
+
+
+# 
+# all_ps_tbl_blast %>% 
+#   group_by(Primer) %>% 
+#   mutate(case_when(Primer %in% c("MiFish") ~ ,
+#                    Primer %in% c("Mibird") ~ ,
+#                    Primer %in% c("MiFish;MiBird") ~))
+# 
+
+
+
+
+
+
+#NOW INCLUDING FAMILY
+all_ps_tbl_blast <- all_ps_tbl_blast %>%
+  mutate("Final ID (DADA2)" = if_else((`exact Species (DADA2)` %in% c(NA,"NA", "NA NA")),
+                              if_else((`Species (DADA2)` %in% c(NA,"NA")),
+                                      if_else(`Genus (DADA2)` %in% c(NA,"NA"),
+                                              # if_else((`blast ID` %in% c(NA,"NA")),
+                                                      # if_else((Subfamily %in% c(NA,"NA")),
+                                                              if_else((`Family (DADA2)` %in% c(NA,"NA")),
+                                                                      # if_else((Suborder %in% c(NA,"NA")),
+                                                                              if_else((`Order (DADA2)` %in% c(NA,"NA")),
+                                                                                      `Class (DADA2)`,
+                                                                                      `Order (DADA2)`),
+                                                                              # Suborder),
+                                                                      `Family (DADA2)`),
+                                                              # Subfamily),
+                                                     # `blast ID`),
+                                              `Genus (DADA2)`),
+                                      `Species (DADA2)`),
+                              as.character(`Exact GenSp (DADA2)`)))
+
+# BLASTn final identification ----
+
+
+
+all_ps_tbl_blast <- all_ps_tbl_blast %>%
+           mutate("Final ID (BLASTn)" = `blast ID`)
+
+
+
+all_ps_tbl_blast$`Final ID (BLASTn)` %>% unique() %>%  sort()
+
+
+colnames(all_ps_tbl_blast)[colnames(all_ps_tbl_blast) == "ASV"] <- "ASV (Sequence)"
+# names(all_ps_tbl_blast)[which(names(all_ps_tbl_blast)== "ASV length")] <- "ASV Size (pb)"
+```
+
+### ASVs seqs
+
+
+```r
+#25 - recover all ASVs sequences to prepare fasta ----
+
+
+
+#all ----
+# giving our seq headers more manageable names (ASV_1, ASV_2...)
+all_asv_seqs <- tibble("ASV (Sequence)" = unique(all_ps_tbl_blast$`ASV (Sequence)`))
+
+all_asv_seqs <- all_asv_seqs %>%
+  mutate("ASV length" = nchar(`ASV (Sequence)`)) %>% 
+  arrange(desc(`ASV length`)) %>% 
+  mutate(`ASV header` = paste0(">ASV_",row_number(),"_",`ASV length`, "bp"))
+
+
+all_asv_seqs$`ASV (Sequence)` %>% unique()
+
+
+
+#combine ASV headers and all_ps_tbl
+all_ps_tbl_blast <- dplyr::left_join(x = all_ps_tbl_blast,
+                                     y = all_asv_seqs[,c("ASV (Sequence)","ASV header")],
+                                     by = "ASV (Sequence)")
+
+
+# making and writing out a fasta of our final ASV seqs with tax
+
+
+log10(all_ps_tbl_blast$Abundance) %>% table()  %>%  plot()
+all_ps_tbl_blast$`Relative abundance on sample` %>% table()  %>%  plot()
+log10(all_ps_tbl_blast$`Relative abundance on sample`/100) %>% table()  %>%  plot()
+(all_ps_tbl_blast$`Relative abundance on sample`) %>% table()  %>%  plot()
+
+
+all_ps_tbl_blast %>% unique()
+all_ps_tbl_blast %>% duplicated()
+all_ps_tbl_blast[all_ps_tbl_blast %>% duplicated(),]
+
+
+
+all_ps_tbl_blast$Abundance %>% table()  %>%  plot()
+all_ps_tbl_blast$`Relative abundance on sample` %>% table() %>%  plot()
+all_ps_tbl_blast$`ASV Size (pb)` %>% table() %>%  plot()
+```
+
+###SWARM - ASVs to OTUs
+
+
+```r
+# all_ps_tbl_blast <- all_ps_tbl_blast %>% 
+#   select(-c(`ASV length.y`,`ASV header.y`)) %>% 
+#   rename("ASV length.x" = "ASV length",
+#          "ASV header.x" = "ASV header")
+
+
+
+asvs_abd <- all_ps_tbl_blast %>%
+  filter(!str_detect(string = `ASV (Sequence)`,pattern = "N")) %>% 
+  dplyr::select(c("ASV (Sequence)","ASV header","Abundance")) %>% 
+  group_by(`ASV (Sequence)`,`ASV header`) %>%
+  mutate("ASV total abundance" = sum(Abundance)) %>%
+  dplyr::select(c(`ASV (Sequence)`,`ASV header`,`ASV total abundance`)) %>%
+  unique() %>%
+  mutate(`ASV header abd` = paste0(`ASV header`,"_",`ASV total abundance`))
+
+#write fasta file with ASVs and Taxonomy
+all_asv_fasta_abd <- c(rbind(asvs_abd$`ASV header abd`, asvs_abd$`ASV (Sequence)`))
+
+write(all_asv_fasta_abd, paste0(results_path,"/",prjct_rad,"-ASVs_abd.fasta"))
+
+paste0(results_path,"/",prjct_rad,"-ASVs_abd.fasta")
+```
+
+#### Run SWARM V2 on command line
+
+
+```r
+# 1 - move to swarm folder on bash
+
+cd $PRJCT_DIR/results/swarm
+
+# 2 - run SWARM
+
+# swarm -t 50 ~/prjcts/ecomol/analyses/2023/WWF/results/EM132_Ecomol_ovoselarvas-ASVs_abd.fasta -s EM132_Ecomol_ovoselarvas_abd-swarm.stats -o EM132_Ecomol_ovoselarvas_abd-swarm.out -w EM132_Ecomol_ovoselarvas_abd-representative_OTUs.fasta-i EM132_Ecomol_ovoselarvas_abd-swarm.structure -f
+
+
+system2(command = "swarm", args = c(paste0(
+  paste0(results_path,"/",prjct_rad,"-ASVs_abd.fasta "),
+                                   " -t 50 "," -f ",
+                                   " -s ", paste0(results_path,"/swarm/",prjct_rad,"-swarm.stats "),
+                                   " -o ", paste0(results_path,"/swarm/",prjct_rad,"-swarm.out "),
+                                   " -w ", paste0(results_path,"/swarm/",prjct_rad,"-representative_OTUs.fasta "),
+                                   " -i ", paste0(results_path,"/swarm/",prjct_rad,"-swarm.structure ")
+                                   )),) # guarantee no zerolength reads
+
+
+
+#detect files generated by swarm and locate OTUs output
+swarm_clust <- list.files(path = swarm_path,
+                          pattern = "swarm.out",
+                          full.names = TRUE ) %>% 
+  readr::read_lines()
+
+ swarm_clust
+
+find_otu <- function(ASV_header, clusters_swarm){
+  
+  ASV_OTU_tbl <- tibble::tibble(`ASV header abd` = stringr::str_remove_all(string = ASV_header,
+  pattern  = ">"),
+                                OTU = 0)
+  
+  ASV_OTU_tbl$OTU <- which(grepl(x = clusters_swarm,
+                                     pattern = ASV_OTU_tbl$`ASV header abd`))
+                                     
+ return(ASV_OTU_tbl)
+} 
+
+
+
+
+
+
+
+# Versões paralelas
+cores_to_be_used <- future::availableCores() - 2 # Usar todos os cores -2 = 78
+future::plan(future::multisession(workers = cores_to_be_used))
+
+
+
+
+ASVs_and_OTUs <- furrr::future_map_dfr(.x = asvs_abd$`ASV header abd`,
+                                       clusters_swarm = swarm_clust,
+                                       .f = find_otu,
+                                       .options = furrr::furrr_options(seed = NULL))
+
+
+
+
+ASVs_and_OTUs$`ASV header abd` <- ASVs_and_OTUs$`ASV header abd` %>% str_replace(pattern = "^",replacement = ">")
+# ASVs_and_OTUs$`ASV header abd` <- ASVs_and_OTUs$`ASV header abd` %>% str_replace(pattern = ">>",replacement = "")
+
+ASVs_and_OTUs$OTU %>% unique() %>% length()
+
+
+# asvs_abd <- asvs_abd %>% dplyr::select(-c("OTU.x", "OTU.y"))
+
+
+asvs_abd <- left_join(asvs_abd,
+                        ASVs_and_OTUs,
+                      by = "ASV header abd")
+
+
+
+asvs_abd
+
+all_ps_tbl_blast <- left_join(all_ps_tbl_blast,asvs_abd[,c("ASV (Sequence)","OTU")],
+                              by = "ASV (Sequence)")
+
+
+names(all_ps_tbl_blast)[which(names(all_ps_tbl_blast)== "ASV length")] <- "ASV Size (pb)"
+
+colnames(all_ps_tbl_blast)
+
+all_ps_tbl_blast %>% dplyr::select(`Final ID (BLASTn)`,OTU) %>% View() 
+all_ps_tbl_blast %>% dplyr::select(`Final ID (BLASTn)`,OTU,`ASV Size (pb)`) %>% unique() %>% View() 
+all_ps_tbl_blast %>% dplyr::select(`Final ID (BLASTn)`,OTU,`ASV Size (pb)`,`Read origin`) %>% unique() %>% View() 
+
+
+
+all_ps_tbl_blast %>% dplyr::select(`Final ID (BLASTn)`,OTU) %>% dplyr::select(OTU) %>% unique() 
+all_ps_tbl_blast %>% dplyr::select(`ASV (Sequence)`,`Final ID (BLASTn)`,OTU) %>% unique() 
+
+
+
+
+
+
+
+
+
+all_asv_seqs_tax <- all_ps_tbl_blast %>% 
+  dplyr::select(c("ASV (Sequence)", "Primer", "ASV header",
+           "Class (BLASTn)", "Family (BLASTn)", "Genus (BLASTn)", "blast ID")) %>% 
+  mutate(`ASV header` = str_remove_all(string = `ASV header`,pattern = ">")) %>% 
+  unique() %>% 
+  group_by(`ASV (Sequence)`,`ASV header`) %>% 
+  
+  mutate(`Full ASV header` = paste0(">ENVIRONMENTAL: ",(paste0(c(`ASV header`,`Primer`, `Class (BLASTn)`, `Family (BLASTn)`, `Genus (BLASTn)`, `blast ID`),collapse = ";")))) %>%
+  ungroup() %>% 
+  unique() 
+
+
+
+################ adaptar pra gerar um por projeto
+#write fasta file with ASVs and Taxonomy
+all_asv_fasta <- c(rbind(all_asv_seqs_tax$`Full ASV header`, all_asv_seqs_tax$`ASV (Sequence)`))
+
+write(all_asv_fasta, paste0(results_path,"/",prjct_rad,"-all_ASVs.fasta"))
+```
+
+
+#Identify ASVs present on the Blanks/Negative controls
+
+
+```r
+#corrigindo que na tabela os controles não foram importados
+
+all_ps_tbl_blast$Sample[all_ps_tbl_blast$Sample %>% grepl(pattern = c("Neg|Bco|Pos"),ignore.case = T)] %>% unique()
+all_ps_tbl_blast$Unique_File_name[all_ps_tbl_blast$Unique_File_name %>% grepl(pattern = c("Neg|Bco"),ignore.case = T)] %>% unique()
+
+all_ps_tbl_blast$PCR.control %>% unique() %>% str_split(pattern = ";",simplify = T) %>% c() %>%  unique() %>% sort()
+
+
+all_ps_tbl_blast %>% unique()
+
+
+
+
+
+
+all_ps_tbl_blast$Type %>% unique()
+all_ps_tbl_blast %>% colnames()
+
+
+all_ps_tbl_blast <- all_ps_tbl_blast %>%
+  dplyr::mutate("Remove" = case_when(Type %in% c("Extraction control",
+                                                           "PCR control",
+                                                           "PCR Control",
+                                                           "Filtration control",
+                                                           "Negative Control",
+                                                           "Positive Control",
+                                                           "Control") ~ "Controls",
+                              TRUE ~ "ASV exclusive to samples"))
+
+
+# Identify contamination based on respective controls----
+all_ps_tbl_blast$Unique_File_name %>% unique() %>% sort()
+all_ps_tbl_blast$PCR.control%>% unique() %>% sort()
+all_ps_tbl_blast$Filtration.control%>% unique() %>% sort()
+# # 
+# all_ps_tbl_blast$Remove[(all_ps_tbl_blast$Type %in% c("Extraction control",
+#                                                       "PCR control",
+#                                                       "PCR Control",
+#                                                       "Filtration control",
+#                                                       "Negative Control",
+#                                                       "Positive Control",
+#                                                       "Control" ))] <- "Controls"
+
+# # 
+# all_ps_tbl_blast$Type[(all_ps_tbl_blast$Unique_File_name %in% c("Neg_PCR1MG_MiFish",
+#                                                                   "Neg_PCR2MG_MiFish" ))] <- "PCR control"
+
+#create table with controls only 
+
+
+all_contam_ASVs <- all_ps_tbl_blast %>%
+  filter(Abundance > 0) %>% 
+  filter(Remove %in% "Controls") %>%
+  group_by(`ASV (Sequence)`, Unique_File_name) %>% 
+  mutate("Max. ASV abd. in control" = max(`Relative abundance on sample`)) %>%
+  ungroup() %>%
+  dplyr::select("Unique_File_name","ASV (Sequence)","Max. ASV abd. in control","Final ID (BLASTn)"
+                # ,"Final ID (DADA2)"
+                ) %>%
+  unique()
+
+
+
+
+# Is there any of the ASVs in control also in the Samples?
+
+all_contam_ASVs$`ASV (Sequence)` %in% (all_ps_tbl_blast$`ASV (Sequence)` %>% unique())
+all_ps_tbl_blast[((all_ps_tbl_blast$`ASV (Sequence)`) %in% all_contam_ASVs$`ASV (Sequence)`),] %>% View()
+
+
+
+all_ps_tbl_blast$Type %>% unique()
+
+
+
+# save new complete table to edit controls
+all_ps_tbl_blast_controls <- all_ps_tbl_blast %>% 
+  mutate("Prop. to PCR control" = 0,
+         "Prop. to Ext control" = 0,
+         "Prop. to Filt control" = 0)
+
+
+
+
+#mark contam ASVs in all other samples
+
+
+# compare sample table with control table and assign foldchanges
+
+all_ps_tbl_blast_controls[all_ps_tbl_blast_controls$`ASV (Sequence)` %in% (all_contam_ASVs$`ASV (Sequence)`),] %>% View()
+
+
+# all_ps_tbl_blast_controls$PCR.control <- all_ps_tbl_blast_controls$PCR.control %>% str_replace_all(pattern = ",",replacement = ";")
+
+
+
+#confira os nomes dos controles!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+#########################################################################################corrigir os da Ju
+all_contam_ASVs$Unique_File_name
+
+all_ps_tbl_blast_controls$PCR.control %>% unique()
+
+
+# all_ps_tbl_blast_controls$Filtration.control[all_ps_tbl_blast_controls$Filtration.control ==  "EM126_Bco1;EM126_Bco2"] <- "EM126-Bco1;EM126-Bco2"
+# all_ps_tbl_blast_controls$PCR.control[all_ps_tbl_blast_controls$PCR.control ==  "PCR2_Bco_iSeq19"] <- "PCR2-Bco-iSeq19"
+
+
+all_ps_tbl_blast_controls$Unique_File_name[all_ps_tbl_blast_controls$Type %in% c("PCR control")] %>% unique()
+all_ps_tbl_blast_controls$Unique_File_name[all_ps_tbl_blast_controls$Type %in% c("Filtration control")] 
+
+
+# all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls %>% 
+#   unite(PCR.control,Primer,
+#         sep = "_",
+#         remove = F,
+#     col ="PCR.control" ) 
+
+
+
+
+for (line in 1:nrow(all_ps_tbl_blast_controls)) {
+  
+
+  if(all_ps_tbl_blast_controls$`ASV (Sequence)`[line] %in% (all_contam_ASVs$`ASV (Sequence)`)){
+  # tab_size <- nrow(all_ps_tbl_blast_controls) 
+  # line <- 
+  seq2search <- all_ps_tbl_blast_controls$`ASV (Sequence)`[line]
+  file2search <- all_ps_tbl_blast_controls$Unique_File_name[line]
+  
+  
+    PCRcontrols2search <- all_ps_tbl_blast_controls$`PCR.control`[line] %>% str_split(pattern = ";") %>% unlist()
+
+    FILTcontrols2search <- all_ps_tbl_blast_controls$`Filtration.control`[line] %>% str_split(pattern = ";") %>% unlist()
+
+    EXTcontrols2search <- all_ps_tbl_blast_controls$`Extraction.control`[line] %>% str_split(pattern = ";") %>% unlist()
+  
+  
+  PCR_control_tbl <- all_contam_ASVs %>% filter(Unique_File_name %in% PCRcontrols2search & `ASV (Sequence)` %in% seq2search)
+  FILT_control_tbl <- all_contam_ASVs %>% filter(Unique_File_name %in% FILTcontrols2search & `ASV (Sequence)` %in% seq2search)
+  EXT_control_tbl <- all_contam_ASVs %>% filter(Unique_File_name %in% EXTcontrols2search & `ASV (Sequence)` %in% seq2search)
+  
+  #proportion on PCR.control
+  all_ps_tbl_blast_controls$`Prop. to PCR control`[line] <- gtools::foldchange(denom = max(PCR_control_tbl$`Max. ASV abd. in control`),
+                                                                         num = all_ps_tbl_blast_controls$`Relative abundance on sample`[line])
+  
+  #proportion on Filt.control
+  all_ps_tbl_blast_controls$`Prop. to Filt control`[line] <- gtools::foldchange(denom = max(FILT_control_tbl$`Max. ASV abd. in control`),
+                                                                         num = all_ps_tbl_blast_controls$`Relative abundance on sample`[line])
+  
+  #proportion on Extraction.control
+  all_ps_tbl_blast_controls$`Prop. to Ext control`[line] <- gtools::foldchange(denom = max(EXT_control_tbl$`Max. ASV abd. in control`),
+                                                                         num = all_ps_tbl_blast_controls$`Relative abundance on sample`[line])
+  # }
+  #denominador = abd in.control
+  #numerador = abd in sample
+  # se +, amostra mais abundante que o.controle
+  
+  # if (line*3==) {
+  #   
+  }
+  print(line)
+  }
+
+
+all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls %>% mutate("Possible contamination" = "True detection")
+
+
+#mark possible contaminations
+
+  all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls %>% 
+    mutate(`Possible contamination` = case_when(
+      (all_ps_tbl_blast_controls$`Prop. to PCR control` != 0) ~ "Possible contamination",
+      (all_ps_tbl_blast_controls$`Prop. to Filt control` != 0) ~ "Possible contamination",
+      (all_ps_tbl_blast_controls$`Prop. to Ext control` != 0) ~ "Possible contamination",
+      TRUE ~ "True detection"
+      ))
+  
+  
+  
+# 
+#   if ((all_ps_tbl_blast_controls$`Prop. to PCR control`[line] <= -2) |
+#       (all_ps_tbl_blast_controls$`Prop. to Filt control`[line] <= -2) |
+#       (all_ps_tbl_blast_controls$`Prop. to Ext control`[line] <= -2) ) {
+#     
+#     all_ps_tbl_blast_controls$`Possible contamination`[line]  <-  "Contamination"
+#     
+#   }
+  
+  # }
+
+
+
+
+
+
+all_ps_tbl_blast_controls$`Prop. to PCR control` %>% table() %>% plot()
+
+
+
+all_ps_tbl_blast_controls %>% 
+  filter(`Possible contamination` %in% c("Possible contamination")) %>% View()
+
+
+
+
+all_ps_tbl_blast_controls %>% 
+  filter(Type %in% c("PCR control")) %>% View()
+
+
+
+
+
+
+
+
+all_ps_tbl_blast$`ASV (Sequence)` %>%  unique()
+all_ps_tbl_blast$Sample %>%  table()
+all_ps_tbl_blast$Remove %>%  table()
+```
+
+
+## plot identified ASVs
+
+
+```r
+all_ps_tbl_blast_controls$`Superkingdom (BLASTn)` %>% unique()
+all_ps_tbl_blast_controls$Project%>% unique()
+
+
+
+all_ps_tbl_blast_controls$Primer[all_ps_tbl_blast_controls$Primer %in% c("12SV5")] <-  "p12SV5"
+
+
+library(ggtext)
+
+
+for (project in all_projects) {
+
+# project <- "Teles Pires"
+
+project_name <- project %>% str_replace_all(pattern = " ",
+                                        replacement = "_")
+
+  
+N_samples <-   all_ps_tbl_blast_controls %>%
+  filter(str_detect(string = Project, pattern = project)) %>% 
+  pull(Unique_File_name) %>% unique() %>% length()
+
+max_ASV <- all_ps_tbl_blast_controls %>%
+  filter(str_detect(string = Project, pattern = project)) %>% 
+  pull(`ASV Size (pb)`)  %>% max()
+
+all_ps_tbl_blast_controls$Primer %>% unique()
+
+ASV_legth_by_Sample_BLAST <- all_ps_tbl_blast_controls  %>%
+  arrange(Primer) %>% 
+  filter(str_detect(string = Project, pattern = project)) %>%
+  # filter(`ASV Size (pb)` %in% c(265:280)) %>%
+  # filter(!`Possible contamination` %in% c("True detection")) %>%
+  filter(`Possible contamination` %in% c("True detection")) %>%
+  filter(Type %in% c("Sample")) %>%
+  # mutate(Sample=factor(Sample,levels = sample_levels)) %>% 
+  mutate("BLASTn pseudo-score" = (`1_indentity`*`1_qcovhsp`/100)) %>%
+  arrange(desc(`BLASTn pseudo-score`)) %>% 
+  arrange(desc(is.na(`BLASTn pseudo-score`))) %>% 
+  # ggplot(aes(y=Sample,
+  ggplot(aes(y=interaction(Unique_File_name,Sample,sep = " - "),
+             x=`ASV Size (pb)`,
+             fill = `BLASTn pseudo-score`,
+             col = `BLASTn pseudo-score`,
+             shape = `Superkingdom (BLASTn)`,
+             size =`Relative abundance on sample`,
+             alpha = 0.2,
+             group = `Final ID (BLASTn)`
+             )) +
+  geom_jitter(height = 0.3,
+              width = 0.5) +
+    scale_fill_gradientn(name = "BLASTn\nidentification\n _pseudo-score_ (%)",
+                         na.value = "grey95",
+                       colours = c("dark red","red","yellow","green","dark green"),
+                       values = c(0,1),
+                       breaks = c(60,65,70,75,80,85,90,95,100))+
+    scale_color_gradientn(name = "BLASTn\nidentification\n _pseudo-score_ (%)",
+                         na.value = "grey80",
+                       colours = c("dark red","red","yellow","green","dark green"),
+                       values = c(0,1),
+                       breaks = c(60,65,70,75,80,85,90,95,100))+
+  scale_size_continuous(name = "Abundância\n     relativa\nna amostra (%)",
+                        breaks = c(0,1,10,20,30,40,50,60,70,80,90,100),
+                        ) +
+  scale_x_continuous(breaks = c(seq(20,
+                                    max(all_ps_tbl$`ASV Size (pb)`),10)),
+  # scale_x_continuous(breaks = c(seq(10,300,10)),
+                     expand = c(0.02,0.02),
+                     sec.axis = dup_axis()) +
+  scale_shape_manual(name = "Superkingdom (BLASTn)",
+                     values = c(25,24,21,23),na.value = 22
+                     # values = c(24,21,23),na.value = 22
+                     ) +
+  xlab("Tamanho da ASV (pb)") +
+  ylab("Amostra") +
+  ggtitle(label = paste0("EcoMol - ",project),
+          subtitle = "Status de identificação de todas ASVs encontradas na análise, após remoção das ASVs dos controles negativos") +
+  theme_bw(base_size = 20) +
+  theme(legend.position = "right")+
+  theme(axis.text.x = element_text(angle = 0,hjust = 0.5),
+        legend.title = element_markdown()
+        ) +
+  guides(alpha="none",
+         color="none") +
+  theme(strip.text = element_text(size = 24),
+        axis.title = element_text(size = 24),
+        axis.text.x = element_text(size = 24)) +
+  facet_grid(rows = vars(Primer),
+  # facet_grid(rows = vars(Project,Primer),
+             space = "free_y",
+             scales = "free_y")
+# + 
+#   annotate(geom = "rect",
+#            xmin = -Inf,
+#            # xmax = 164,
+#            xmax = 85,
+#            ymin = 0,
+#            ymax = Inf,
+#            fill = "#ff0033",
+#            alpha = 0.075) +
+#   annotate(geom = "rect",
+#            xmin = 150,
+#            # xmax = 164,
+#            xmax = Inf,
+#            ymin = 0,
+#            ymax = Inf,
+#            fill = "#ff0033",
+#            alpha = 0.075)
+# +
+#   annotate(geom = "rect",
+#            # xmin = 179,
+#            xmin = 220,
+#            xmax = Inf,
+#            ymin = 0,
+#            ymax = Inf,
+#            fill = "#ff0033",
+#            alpha = 0.075)
+
+
+# ASV_legth_by_Sample_BLAST 
+
+
+ggsave(file = paste0(figs_path,"/",project_name,"-ASV_length_by_sample-ALL-ASVs-noContams.pdf",collapse = ""),
+# ggsave(file = paste0(results_path,"/",
+#                      unique(smp_abd_ID_Final$Project),"/",
+#                      unique(smp_abd_ID_Final$Project),"-ASV_length_by_sample-ALL-ASVs.pdf",collapse = ""),
+     plot = ASV_legth_by_Sample_BLAST,
+     device = "pdf",
+     width = 100,
+     height = ifelse(N_samples <= 10, 10, round(N_samples/1.5)), limitsize=FALSE,
+     units = "cm",
+     dpi = 300)
+
+}
+
+
+
+
+library(plotly)
+
+ASV_legth_by_Sample_BLAST_plotly <- ASV_legth_by_Sample_BLAST %>% ggplotly(tooltip = c("Final ID (BLASTn)",
+                                                   "Sample",
+                                                   "ASV Size (pb)",
+                                                   "BLASTn pseudo-score",
+                                                   "Superkingdom (BLASTn)",
+                                                   "Relative abundance on sample"))
+
+
+htmlwidgets::saveWidget(widget = ASV_legth_by_Sample_BLAST_plotly,
+                selfcontained = TRUE,
+                        file = paste0(figs_path,"/",prjct_rad,"-ASVs_BLASTn_IDed_interactive-noContams.html"))
+```
+
+
+
+#ASV expected length per primer
+
+```r
+# all_ps_tbl_blast_controls_bckp <- all_ps_tbl_blast_controls
+# all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls_bckp
+
+
+
+# fill ranges column with expected primer insert ranges
+
+all_ps_tbl_blast_controls$Primer %>% unique() 
+
+
+all_ps_tbl_blast_controls %>% colnames()
+
+
+all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls %>% 
+mutate(`Expected length` = "FALSE")
+
+all_ps_tbl_blast_controls$Primer %>% unique() %>% sort() %>% 
+  paste0(collapse = '",\n"') %>% cat()
+
+
+all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls %>% 
+mutate(`Expected length` = case_when(
+  # (Primer %in%  "VF2_FR1d;Fish1;Fish2" & `ASV Size (pb)` %in% c(265:280) &
+  #    `Read origin` %in% c("R1","R2")) ~ "in range",
+  # (Primer %in%  "VF2_FR1d;Fish1;Fish2" & `Read origin` %in% c("merged")) ~ "in range",
+  # (Primer %in%  c("COIr1","COI_R1") & `ASV Size (pb)` %in% c(125:145)) ~ "in range",
+  # (Primer %in%  "COI_R1;COI fwh2" & `ASV Size (pb)` %in% c(120:145,200:220)) ~ "in range",
+  (Primer %in%  "p12SV5" & `ASV Size (pb)` %in% c(85:110)) ~ "in range",
+  # (Primer %in%  "miniCOI" & `ASV Size (pb)` %in% c(160:190)) ~ "in range",
+  # (Primer %in%  "MiFish" & `ASV Size (pb)` %in% c(165:178)) ~ "in range",
+  # (Primer %in%  "MiBird" & `ASV Size (pb)` %in% c(155:195)) ~ "in range",
+  (Primer %in%  c("MiBird", "MiBird;MiMa", "MiFish", "MiFish;MiBird", "Mima") &
+     `ASV Size (pb)` %in% c(155:190)) ~ "in range",
+  # (Primer %in%  c("12SV5", "12SV5;tay16SMam", "tay16SMam","p12SV5;taylor") &
+     # `ASV Size (pb)` %in% c(75:150)) ~ "in range",
+  TRUE ~ "out of range")) 
+
+
+
+
+
+ all_ps_tbl_blast_controls$`Expected length`[all_ps_tbl_blast_controls$`Expected length` == "FALSE"]
+
+
+all_ps_tbl_blast_controls %>% colnames() %>% sort()
+```
+
+## Set curated ID
+
+
+The curated identification is obtained by manually (but programatically) correcting species based on biological scientific expertise, or species names that are uncorrect. 
+
+
+```r
+all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls %>% 
+  # mutate(`Final ID ` = unfactor(`Final ID `)) %>% 
+  mutate("Curated ID" = `Final ID (BLASTn)`)
+
+
+# all_ps_tbl_blast_controls$`Curated ID` <- unfactor(all_ps_tbl_blast_controls$`Curated ID`)
+
+
+
+
+#  determinar rank taxon^~omico mais confiável ----
+
+all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls %>% 
+  mutate("BLASTn pseudo-score" = `1_indentity` *`1_qcovhsp` /100) %>% 
+  mutate("Identification" =  case_when(`BLASTn pseudo-score` >= 98 ~ `Final ID (BLASTn)`,
+                                       `BLASTn pseudo-score` >= 95 & `BLASTn pseudo-score` < 98 ~ `Genus (BLASTn)`,
+                                       `BLASTn pseudo-score` >= 90 & `BLASTn pseudo-score` < 95 ~ `Family (BLASTn)`,
+                                       `BLASTn pseudo-score` >= 80 & `BLASTn pseudo-score` < 90 ~ `Order (BLASTn)`,
+                                       `BLASTn pseudo-score` >= 60 & `BLASTn pseudo-score` < 80 ~ `Class (BLASTn)`),
+         "Identification Max. taxonomy" =               case_when(`BLASTn pseudo-score` >= 98 ~ "Species",
+                                       `BLASTn pseudo-score` >= 95 & `BLASTn pseudo-score` < 98 ~ "Genus",
+                                       `BLASTn pseudo-score` >= 90 & `BLASTn pseudo-score` < 95 ~ "Family",
+                                       `BLASTn pseudo-score` >= 80 & `BLASTn pseudo-score` < 90 ~ "Order",
+                                       `BLASTn pseudo-score` >= 60 & `BLASTn pseudo-score` < 80 ~ "Class")) %>% 
+  relocate("Identification","Identification Max. taxonomy","BLASTn pseudo-score")
+
+
+
+
+
+
+all_ps_tbl_blast_controls$`blast ID` %>% unique() %>% sort() %>% paste0(collapse = '",\n"') %>% cat()
+
+
+
+
+{
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("Human DNA","Eukaryotic synthetic"))] <- "Homo sapiens"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("Hydrochaeris hydrochaeris"))] <- "Hydrochoerus hydrochaeris"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("Bacterium "))] <- "Bacterium "
+  
+  
+  
+  
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("(microculex) sp.2/sp.4"))] <- "Culex (microculex) sp.2/sp.4"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("aff. Caraguataa"))] <- "Monopelopia aff. Caraguataa"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("aff. detriticula"))] <- "Chironomus aff. detriticula"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("sp. GRU17;/GRU18;/GRU20;/GRU238;"))] <- "Tanytarsus sp. GRU17/GRU18/GRU20/GRU238"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("sp.2 GRU59;"))] <- "Tabanidae sp.2 GRU59"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("sp.3 GRU191;"))] <- "Culex sp.3 GRU191"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("sp.4 GRU90;"))] <- "Culex sp.4 GRU90"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("sp.Mix GRU210;/GRU211;/GRU212;"))] <- "Culex sp.Mix GRU210/GRU211/GRU212"
+# 
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("NA GRU45;/GRU55;/GRU56;"))] <- "Brachycera GRU45/GRU55/GRU56"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("NA GRU01;/GRU03;/GRU04;/GRU05;/GRU11;"))] <- "Scirtes GRU01/GRU03/GRU04/GRU05/GRU11"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("NA GRU213;/sp.5/sp.6"))] <- "Pterygota GRU213/sp.5/sp.6"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("NA GRU127;/GRU128;/GRU129;/GRU13;/GRU14;/GRU16;/GRU233;"))] <- "Polypedilum GRU127/GRU128/GRU129/GRU13/GRU14/GRU16/GRU233"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("NA GRU127;/GRU128;/GRU129;/GRU13;/GRU14;/GRU15;/GRU16;/GRU232;/GRU233;"))] <- "Polypedilum GRU127/GRU128/GRU129/GRU13/GRU14/GRU15/GRU16/GRU232/GRU233"
+#  
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c("Zavrelimyia (Paramerina)"))] <- "(Chironomidae) Zavrelimyia (Paramerina)"
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c())] <- ""
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c())] <- ""
+# all_ps_tbl_blast_controls$`Curated ID`[(all_ps_tbl_blast_controls$`Curated ID` %in% c())] <- ""
+
+
+
+
+  
+  
+}
+
+
+
+
+
+
+
+
+all_ps_tbl_blast_controls$Remove %>% unique()
+
+
+
+
+
+all_ps_tbl_blast_controls$`Curated ID` %>% unique() %>% sort() %>% paste0(collapse = '",\n"') %>% cat()
+#modificando espécies combase na discussão da  imersão
+
+
+
+
+
+
+all_ps_tbl_blast_controls %>% select(`Curated ID`,OTU,Remove) %>% unique() %>% View()
+# all_ps_tbl_blast %>% select(`Possible Metazoa`,`Curated ID`,OTU,Remove) %>%
+#   filter(`Possible Metazoa` == FALSE) %>% unique() %>% View()
+# 
+# all_ps_tbl_blast %>% 
+#   select(`Possible Metazoa`,`Curated ID`,OTU,Remove) %>%
+#     filter(`Possible Metazoa` == FALSE) %>% 
+#   select(`Curated ID`) %>%
+#   unique() %>% 
+#   # as.vector() %>% 
+#   # c() %>%
+#   mutate(`Curated ID` = unfactor(`Curated ID`)) %>%
+#   dplyr::arrange(`Curated ID`) %>% 
+#   as.vector() %>% 
+#   paste0(collapse = '", \n\n"') %>% 
+#   cat()
+
+
+
+# SPs to remove from results ----
+# SPs_to_remove <- c("", NA)
+```
+
+
+
+#Reorder table
+
+
+```r
+# all_ps_tbl_blast_controls_bckp2<- all_ps_tbl_blast_controls
+# all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls_bckp2
+
+
+# colnames(all_ps_tbl_blast_controls) %>% paste0(collapse = '",\n"') %>% cat()
+
+
+
+
+all_ps_tbl_blast_controls <-
+  all_ps_tbl_blast_controls %>%
+  # mutate("Read origin" = "merged") %>%11111111111\!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  dplyr::rename("PCR control" = "PCR.control",
+         "Ext. control"= "Extraction.control",
+         "Filt. control" = "Filtration.control") %>%
+  dplyr::select(
+    # colnames(all_ps_tbl_blast_controls) [!colnames(all_ps_tbl_blast_controls) %in%
+    c(
+      "Researcher",
+            "Project",
+      "Primer",
+      # "Run",#############################################
+      # "Analysis",
+                 # "sample_Sample",   
+                 "Sample",   
+                 # "Predator.species",
+                 "Unique_File_name",
+                 "Read origin",
+                 "Relative abundance to all samples",
+                 "Relative abundance on sample",
+                 "Sample total abundance",
+                 "Abundance",
+            "Metadata.1",
+            "Metadata.2",
+            "Metadata.3",
+            "Metadata.4",
+            "Metadata.5",
+            "Metadata.6",
+            # "metadata_1",
+            # "metadata_2",
+            # "metadata_3",
+            # "metadata_4",
+            # "metadata_5",
+            # "metadata_6",
+            "obs",
+            "BLASTn pseudo-score",
+                 "Identification",
+      "Identification Max. taxonomy",
+                 "Curated ID",
+                 # "Final ID ",
+                 "Final ID (BLASTn)",
+                                                          # "Final ID (DADA2)",
+            
+                 "Expected length",
+                 "blast ID",
+            "blast ID Origin",
+                 #DADA2
+                                         #         
+                                          # "Exact GenSp (DADA2)",
+                                          # "exact Species (DADA2)",
+                                          # "Exact Genus (DADA2)",
+                                          # # "Group",
+                                          # # "Group (DADA2 bootstrap)",
+                                          # "Basin (DADA2)",
+                                          # "Basin (DADA2 bootstrap)",
+                                          #        "Species (DADA2)",
+                                          #        "Species (DADA2 bootstrap)",
+                                          #        "Specimen (DADA2)",
+                                          #        "Specimen (DADA2 bootstrap)",
+                                          #        "Genus (DADA2)",
+                                          #        "Genus (DADA2 bootstrap)",
+                                          #        "Family (DADA2)",
+                                          #        "Family (DADA2 bootstrap)",
+                                          #        "Order (DADA2)",
+                                          #        "Order (DADA2 bootstrap)",
+                                          #        "Class (DADA2)",
+                                          #        "Class (DADA2 bootstrap)",
+                                          #        "Phylum (DADA2)",
+                                          #        "Phylum (DADA2 bootstrap)",
+                                          #        "Kingdom (DADA2)",
+                                          #        "Kingdom (DADA2 bootstrap)",
+          #blast
+                 # "max_tax",
+          "Genus (BLASTn)",
+          "Subfamily (BLASTn)",
+          "Family (BLASTn)",
+          "Suborder (BLASTn)",
+          "Order (BLASTn)",
+          "Subclass (BLASTn)",
+          "Class (BLASTn)",
+          "Phylum (BLASTn)",
+          "Subphylum (BLASTn)",
+          "Kingdom (BLASTn)",
+          "Superkingdom (BLASTn)",
+          # "Kingdom (BLASTn)",
+                 # "1_res",
+                 "1_subject header",
+                 # "1_query",
+                 "1_staxid",
+                 "1_subject",
+                 "1_indentity",
+                 "1_qcovhsp",
+                 "1_length",
+                 "1_mismatches",
+                 "1_gaps",
+                 "1_query start",
+                 "1_query end",
+                 "1_subject start",
+                 "1_subject end",
+                 "1_e-value",
+                 "1_bitscore",
+                 # "2_res",
+                 "2_subject header",
+                 "2_staxid",
+                 # "2_query",
+                 "2_subject",
+                 "2_indentity",
+                 "2_qcovhsp",
+                 "2_length",
+                 "2_mismatches",
+                 "2_gaps",
+                 "2_query start",
+                 "2_query end",
+                 "2_subject start",
+                 "2_subject end",
+                 "2_e-value",
+                 "2_bitscore",
+                 # "3_res",
+                 "3_subject header",
+                 "3_staxid",
+                 # "3_query",
+                 "3_subject",
+                 "3_indentity",
+                 "3_qcovhsp",
+                 "3_length",
+                 "3_mismatches",
+                 "3_gaps",
+                 "3_query start",
+                 "3_query end",
+                 "3_subject start",
+                 "3_subject end",
+                 "3_e-value",
+                 "3_bitscore",
+
+                 
+                 "Remove",
+                 "ASV Size (pb)",
+                 # "Size (pb)",
+                 "ASV header",
+                 "ASV (Sequence)",
+                 
+                 "OTU",
+# "Extraction control",
+"PCR control",
+"Filt. control",
+                 "Prop. to PCR control", 
+                 "Prop. to Ext control",
+                 "Prop. to Filt control",
+                 "Possible contamination",
+                 "Type"
+
+                 # "Tag.pairs",
+                 # "Run" 
+                 ))
+
+
+# all_ps_tbl_blast_controls_bckp3 <- all_ps_tbl_blast_controls
+
+all_ps_tbl_blast_controls$`Curated ID` %>%  unique() %>% sort()
+
+
+
+
+
+
+#mark Possible Metazoan IDs ----
+
+all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls %>% 
+  mutate("Possible Metazoa" = FALSE)
+
+all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls %>% 
+  mutate("Possible Metazoa" = case_when(stringr::str_detect(string =`Kingdom (BLASTn)`, pattern = "acter|Archaea|Virus|Fungi|ridiplantae") ~ FALSE,
+                                        is.na(`Kingdom (BLASTn)`) ~ FALSE,
+                                        stringr::str_detect(string =`Kingdom (BLASTn)`, pattern = "Metazoa") ~ TRUE,
+                                        TRUE ~ FALSE))
+  # %>% 
+#   mutate("Possible Metazoa" = if_else((stringr::str_detect(string = .$`Phylum (BLASTn)`, pattern = "bacter|proka")), TRUE, FALSE))
+
+# all_ps_tbl_blast_controls$`Possible Metazoa`[all_ps_tbl_blast_controls$`Kingdom (BLASTn)` %in% c("Metazoa")] <- FALSE  #o or em cima t[a meio estranho!]
+
+all_ps_tbl_blast_controls %>% filter(`Possible Metazoa` %in% c(NA,"NA")) %>% View()
+all_ps_tbl_blast_controls %>% filter(`Possible Metazoa` %in% c(FALSE)) %>% View()
+all_ps_tbl_blast_controls %>% filter(`Possible Metazoa` %in% c(TRUE)) %>% View()
+```
+
+##save complete table
+
+
+```r
+# reload metadata if needed----
+
+# all_ps_tbl_blast_controls_bckp3 <- all_ps_tbl_blast_controls
+# all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls_bckp3
+
+                # metadata <- read.csv(file = paste0(data_path,"/","ecomol-WWF_7-MiBird-primers_n_samples.csv"),
+                #                      check.names = F,
+                #                      header = TRUE) %>%
+                #   select(c("Unique_File_name", "Metadata 1", "Metadata 2", "Metadata 3", "Metadata 4", "Metadata 5", "obs"))
+                # 
+                # 
+                # all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls %>%
+                #   select(-c("Metadata 1", "Metadata 2", "Metadata 3", "Metadata 4", "Metadata 5", "obs")) %>%
+                #   left_join(y = metadata,by = "Unique_File_name")
+
+
+all_ps_tbl_blast_controls %>% colnames()
+blast_res_tax %>% colnames() %>% paste0(collapse = '","') %>% cat()
+# blast_res_tax <-  blast_res_tax %>% select(-c("1_query\n        start","2_query\n        start", "3_query\n        start")) 
+
+# all_ps_tbl_blast_controls_bckp4 <- all_ps_tbl_blast_controls
+
+
+
+#TODO  relocatetable combination with blast results only here
+
+# all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls %>%
+#   select(-c("blast ID","blast ID Origin","max_tax",
+#             # "ASV (Sequence)",
+#             # "1_res",
+#             "1_subject header","1_subject","1_indentity","1_length",
+#             "1_mismatches","1_gaps","1_query start","1_query end","1_subject start",
+#             "1_subject end","1_e-value","1_bitscore","1_qcovhsp",
+#             # "2_res",
+#             "2_subject header","2_subject","2_indentity","2_length",
+#             "2_mismatches","2_gaps","2_query start","2_query end","2_subject start",
+#             "2_subject end","2_e-value","2_bitscore","2_qcovhsp",
+#             # "3_res",
+#             "3_subject header","3_subject","3_indentity","3_length",
+#             "3_mismatches","3_gaps","3_query start","3_query end","3_subject start",
+#             "3_subject end","3_e-value","3_bitscore","3_qcovhsp",
+#             "Kingdom (BLASTn)","Phylum (BLASTn)","Subphylum (BLASTn)",
+#             "Class (BLASTn)","Subclass (BLASTn)","Order (BLASTn)","Suborder (BLASTn)",
+#             "Family (BLASTn)","Subfamily (BLASTn)","Genus (BLASTn)")) %>%
+#             left_join(y =  dplyr::rename(blast_res_tax,"ASV (Sequence)"="ASV"),
+#                       by = "ASV (Sequence)")
+all_ps_tbl_blast_controls$Sample %>% unique()
+all_ps_tbl_blast_controls$Unique_File_name %>% unique()
+all_ps_tbl_blast$Sample %>% unique()
+
+
+
+all_ps_tbl_blast_controls %>% 
+  select(Unique_File_name,Sample) %>% View()
+
+# #Recover original sample names
+# all_ps_tbl_blast_controls <- all_ps_tbl_blast_controls %>% 
+#   left_join(y = (all_ps_tbl_blast %>% select(Sample, Unique_File_name) %>% unique()),
+#             by = "Unique_File_name")
+
+
+all_ps_tbl_blast_controls_clean <- all_ps_tbl_blast_controls %>%
+  # filter(`Class (BLASTn)` %in% c("Actinopteri")) %>%                           #########################################################################
+  # filter(`Read origin` %in% c("R1","R2")) %>%                           #########################################################################
+    # 
+    # mutate("ID status" = case_when(is.na(`Final ID (BLASTn)`) & is.na(`Final ID (DADA2)` ) ~ "not IDed",
+    #                                !is.na(`Final ID (BLASTn)`) | !is.na(`Final ID (DADA2)`) ~ "IDed")) %>%
+    mutate("ID status" = case_when(is.na(`Final ID (BLASTn)`) ~ "not IDed",
+                                   !is.na(`Final ID (BLASTn)`) ~ "IDed")) %>%
+    # ABD limpa por amostra
+    group_by(Unique_File_name,Primer,`Expected length`,`ID status`, `Possible Metazoa`,`Read origin`
+             # ,`Possible contamination`
+             ) %>%
+    # group_by(Sample,`Expected length`,`ID status`, `Possible Metazoa`,`Read origin`,`Possible contamination`) %>%  #WWF
+    mutate("Total clean sample abd. by marker"  = 0,
+           "Total clean sample abd. by marker" = case_when((`ID status` %in% c("IDed") & 
+                                                        `Expected length` %in% c("in range") & 
+                                                        # `Possible contamination` %in% c("True detection") &
+                                                        `Possible Metazoa` == TRUE) ~ sum(`Abundance`)
+                                                      # (`ID status` %in% "not IDed") ~ 0,
+                                                      # (`Expected length` %in% "out of range") ~ 0,
+                                                      # (`Possible contamination` %in% "Possible contamination") ~ 0,
+                                                      # (`Possible Metazoa` %in% FALSE) ~ 0
+                                                      # TRUE ~ 0
+                                                      )) %>% 
+    ungroup() %>% 
+  
+  # mutate("Clean relative abd. on sample" =  case_when(`ID status` == "not IDed"  ~ 0,
+  #                                                     `Expected length` == "out of range" ~ 0,
+  #                                                     `ID status` == "IDed" & 
+  #                                                       `Expected length` == "in range" & 
+  #                                                       `Possible contamination` == "True detection" &
+  #                                                       `Possible Metazoa` == TRUE ~ (`Abundance`/`Total clean sample abd. by marker`))) %>% 
+  mutate("Clean relative abd. on sample" =  (`Abundance`/`Total clean sample abd. by marker`)) %>% 
+  relocate("Unique_File_name","Sample","Primer","Expected length","ID status", "Possible Metazoa","Read origin","Possible contamination","Clean relative abd. on sample","Total clean sample abd. by marker")
+
+#order by abundance
+colnames(all_ps_tbl_blast_controls_clean)
+unique(all_ps_tbl_blast_controls_clean$Remove)
+
+
+
+
+
+
+smp_abd_ID <- all_ps_tbl_blast_controls_clean[rev(base::order(all_ps_tbl_blast_controls_clean$Abundance)),] %>%
+  # filter(!`Read origin` %in% c("concat")) %>% 
+  filter(`Abundance` > 0) %>% 
+  dplyr::rename(
+    # "ASV (Sequence)" = "ASV (Sequence)",
+    # "Sample" = "Sample",
+    # "Preservation" = "Metadata 1",
+    "ASV absolute abundance" = "Abundance",
+    # "Sample Name" = "Sample.Name",
+    # "Tag pairs" = "Tag.pairs",
+  #                                                              "Exact Genus (DADA2)" = "Exact Genus (DADA2)",
+  #                                                              "exact Species (DADA2)" = "exact Species (DADA2)",
+  #                              "Exact Genus/Species (DADA2)" = "Exact GenSp (DADA2)",
+                               # "Kingdom (DADA2 boot)" = "(DADA2 bootstrap)Kingdom",
+                               # "Phylum (DADA2 boot)" = "(DADA2 bootstrap)Phylum",
+                               # "Class (DADA2 boot)" = "(DADA2 bootstrap)Class",
+                               # "Order (DADA2 boot)" = "(DADA2 bootstrap)Order",
+                               # "Family (DADA2 boot)" = "(DADA2 bootstrap)Family",
+                               # "Genus (DADA2 boot)" = "(DADA2 bootstrap)Genus",
+                               # "Species (DADA2 boot)" = "(DADA2 bootstrap)Species",
+  #                              # "Specimen (DADA2 boot)" = "(DADA2 bootstrap)Specimen",
+  #                              # "Basin (DADA2 boot)" = "(DADA2 bootstrap)Basin",
+  #                              # "Superkingdom (BLASTn)" = "Superkingdom (BLASTn)",
+    "BLAST ID" = "blast ID",
+    # "Exact Genus and Species (DADA2)" = "exact GenSp",
+    "Final ID (BLASTn)" = "Final ID (BLASTn)",
+  #                              "Final ID (DADA2)" = "Final ID (DADA2)",
+    "Contamination control" = "Remove",
+    "Contamination status" = "Possible contamination",
+    "Primer expected length" = "Expected length",
+    ) %>% 
+  relocate(c(
+    "Researcher",
+    # "Run",
+    # "Analysis",
+    "Project",
+    "BLASTn pseudo-score",
+    "Identification",
+    "Identification Max. taxonomy",
+    "Primer",
+    # "sample_Sample",
+    "Sample",
+    "Primer",
+    "Unique_File_name",
+    "Read origin",
+    "Relative abundance to all samples",
+    "Relative abundance on sample",
+    "Sample total abundance",
+    "ASV absolute abundance",
+    "Total clean sample abd. by marker",
+    "Clean relative abd. on sample",
+    # "metadata_1",
+    # "metadata_2",
+    # "metadata_3",
+    # "metadata_4",
+    # "metadata_5",
+    # "metadata_6",
+    "Metadata.1",
+    "Metadata.2",
+    "Metadata.3",
+    "Metadata.4",
+    "Metadata.5",
+    "Metadata.6",
+    "obs",
+    "Primer expected length",
+    "ASV Size (pb)",
+    "Possible Metazoa",
+    
+    "Curated ID",
+    "Final ID (BLASTn)",
+    # "Final ID (DADA2)",
+    "BLAST ID",
+    ,
+    "blast ID Origin")) 
+
+dim(smp_abd_ID)
+
+colnames(smp_abd_ID) %>% paste0(collapse = '",\n"') %>% cat()
+
+# smp_abd_ID %>% filter(`Relative abundance on sample` >= 0.05)
+# 
+# smp_abd_ID %>% 
+#   filter(`Read origin` %in% "R2") %>% 
+#   pull(`ASV (Sequence)`) %>% 
+#   unique()
+
+smp_abd_ID$`Possible contamination` %>% unique()
+smp_abd_ID$Sample %>% unique()
+smp_abd_ID$`Superkingdom (BLASTn)` %>% unique()
+smp_abd_ID$`Kingdom (BLASTn)` %>% unique()
+smp_abd_ID$`Class (BLASTn)` %>% unique()
+
+
+# smp_abd_ID %>% group_by(Sample) %>%
+smp_abd_ID %>% group_by(Unique_File_name) %>%
+  summarize("abd" = sum(`Clean relative abd. on sample`,na.rm = T),
+            "tot" = sum(`Total clean sample abd. by marker`,na.rm = T)/sum(!is.na(`Total clean sample abd. by marker`))) %>% View()
+
+
+
+
+#save complete table with all results ----
+
+
+
+############ WWF - adicionando os metadados ----
+          
+          metadatas <- readr::read_csv(file = "~/prjcts/ecomol/analyses/2023/WWF/data/WWF-metadados_CAMPOS.csv") 
+          
+          
+          (smp_abd_ID$Sample %>% unique())[!(smp_abd_ID$Sample %>% unique()) %in% (metadatas$Sample %>% unique())]
+          
+          smp_abd_ID <- smp_abd_ID %>% left_join(y = metadatas,
+                                   by = "Sample") %>% 
+            relocate(colnames(metadatas))
+
+# ----
+
+# slecionar apenas os resultados pertinentes ----
+
+
+# writexl::write_xlsx(x = smp_abd_ID,
+smp_abd_ID_Final <- smp_abd_ID 
+  #         %>% 
+  # # filter(Primer %in% c("COIr1")) %>% 
+  # # filter(Project %in% c("EM129_Florencia")) 
+  # filter(Project %in% c("EM135_CIAT")) 
+          # %>%  
+  # filter(Researcher %in% c("EcoMol"))  
+    
+#                 
+#           
+# 
+#           
+# if (!dir.exists(paths = paste0(results_path,"/",unique(smp_abd_ID_Final$Project)))) {
+#   dir.create(path = paste0(results_path,"/",unique(smp_abd_ID_Final$Project)))
+#   print(paste0("Dir ",paste0(results_path,"/",unique(smp_abd_ID_Final$Project))," created"))
+# }else{
+#     print(paste0("Dir ",paste0(results_path,"/",unique(smp_abd_ID_Final$Project))," already exists"))
+#   }
+# 
+
+
+
+
+#save complete results table, per project ----
+
+
+for (project in all_projects) {
+
+# project <- "Teles Pires"
+
+project_name <- project %>% str_replace_all(pattern = " ",
+                                        replacement = "_")
+
+
+
+smp_abd_ID_Final %>% 
+  filter(Project %in% c(project)) %>% 
+writexl::write_xlsx(
+                    # path = paste0(results_path,"/",
+                    #               unique(smp_abd_ID_Final$Project),"/",
+                    #               unique(smp_abd_ID_Final$Project),"-todas_info_da_analise_",Sys.Date(),".xlsx"),
+                    path = paste0(results_path,"/",project_name,"-Complete_analysis_results-",Sys.Date(),".xlsx"),
+                    col_names = TRUE,
+                    format_headers = TRUE)
+
+}
+
+
+
+smp_abd_ID[smp_abd_ID$`ASV (Sequence)` %in% c(all_contam_ASVs$`ASV (Sequence)`),] %>% View()
+'/home/heron/prjcts/ecomol/analyses/2023/WWF/results/EM117_Pantanal'
+```
+
+
+### Save ASV Vs. Samples table
+
+
+```r
+# generate ASVs Vs. Samples table from complete table ----
+
+#function to either sum or unique by column type ----
+##################################################
+sum_uniq <- function(vec=vec){
+  
+  if (is.character(vec)==TRUE) {
+    suniq <- BiocGenerics::unique(vec)
+  }
+  if (is.numeric(vec)==TRUE) {
+    suniq <- sum(vec)
+  }
+  return(suniq)
+}
+####################################################
+
+
+
+
+colnames(smp_abd_ID) %>% paste0(collapse = '",\n"') %>% cat()
+
+smp_abd_ID$`ASV (Sequence)` %>% unique()
+
+
+
+
+
+
+
+# generate ASVs Vs. Samples table from complete table ----
+
+
+for (project in all_projects) {
+
+# project <- "Teles Pires"
+
+project_name <- project %>% str_replace_all(pattern = " ",
+                                        replacement = "_")
+
+
+
+
+smp_abd_ID_eco <-
+smp_abd_ID_Final %>% 
+  filter(Project %in% c(project)) %>% 
+  # filter(`Read origin` %in% c("R1","R2")) %>%
+  # filter(`1_indentity` >= 80) %>%
+  filter(Type %in% c("Sample")) %>%
+  filter(`Clean relative abd. on sample` != 0) %>% 
+  unite(col = "Sample", Sample, Primer,sep = "-",remove = F) %>% 
+  mutate(Identification = if_else(Identification %in% c(NA,"NA"),"NA",Identification)) %>% 
+  mutate(
+    "Curated ID" = Identification,
+    "Obs. Curadoria" = "") %>% 
+  dplyr::select(-c("Relative abundance to all samples", 
+            "Sample total abundance",
+            "ASV absolute abundance",
+            # "Metadata 1","Metadata 2","Metadata 3","Metadata 4","Metadata 5","obs",
+            # "Curated ID",
+            # "Final ID (BLASTn)",
+            # "Final ID (DADA2)",
+            # "Extraction.control",
+            "PCR control",
+            "Prop. to PCR control",
+            "Prop. to Ext control",
+            "Prop. to Filt control",
+            "Contamination status",
+            # "Primer expected length",
+            "Type")) %>% 
+  pivot_wider(
+    id_cols = c(
+      "Identification",
+      "Identification Max. taxonomy",
+      "Curated ID",
+      "Obs. Curadoria",
+      "Final ID (BLASTn)",
+      # "Final ID (DADA2)",
+      "Primer","Primer","Read origin","Primer expected length",
+                "Possible Metazoa", "Project",
+      
+      # colnames(metadatas[,-2]),
+                
+
+                        # "Kingdom (DADA2)",
+                        # "Phylum (DADA2)",
+                        # "Class (DADA2)",
+                        # "Order (DADA2)",
+                        # "Family (DADA2)",
+                        # "Genus (DADA2)",
+                        # "Species (DADA2)",
+                        # "Specimen (DADA2)",
+                        # "Basin (DADA2)",
+                        # "Exact Genus/Species (DADA2)",
+                
+                
+                "Superkingdom (BLASTn)",
+                "Kingdom (BLASTn)",
+                "Phylum (BLASTn)",
+                "Subphylum (BLASTn)",
+                "Class (BLASTn)",
+                "Subclass (BLASTn)",
+                "Order (BLASTn)",
+                "Suborder (BLASTn)",
+                "Family (BLASTn)",
+                "Subfamily (BLASTn)",
+                "Genus (BLASTn)",
+                # "max_tax",
+      # "BLAST ID",
+      "BLASTn pseudo-score",
+                          "1_subject header","1_subject","1_indentity","1_qcovhsp",
+                          "1_length","1_mismatches","1_gaps","1_query start","1_query end",
+                          "1_subject start","1_subject end","1_e-value","1_bitscore","2_subject header",
+                          "2_subject","2_indentity","2_qcovhsp","2_length","2_mismatches",
+                          "2_gaps","2_query start","2_query end","2_subject start","2_subject end",
+                          "2_e-value","2_bitscore","3_subject header","3_subject","3_indentity",
+                          "3_qcovhsp","3_length","3_mismatches","3_gaps","3_query start",
+                          "3_query end","3_subject start","3_subject end","3_e-value","3_bitscore",
+              # "Contamination control",
+      "ASV Size (pb)","ASV header","ASV (Sequence)","OTU"),
+    # values_from ="Relative abundance on sample",
+    values_from ="Clean relative abd. on sample",
+    values_fn = sum_uniq,
+    names_from = Unique_File_name,
+    # names_from = "Sample",                           #only!!!!!!!!!
+    names_sort = TRUE,
+    names_prefix = "SAMPLE ") %>% 
+  relocate(c("Primer",
+      # colnames(metadatas[,-2]),
+             "Read origin",
+                        # "Kingdom (DADA2)",
+                        # "Phylum (DADA2)",
+                        # "Class (DADA2)",
+                        # "Order (DADA2)",
+                        # "Family (DADA2)",
+                        # "Genus (DADA2)",
+                        # "Species (DADA2)",
+                        # "Specimen (DADA2)",
+                        # "Basin (DADA2)",
+                        # "Exact Genus/Species (DADA2)",
+             
+              "Superkingdom (BLASTn)",
+              "Kingdom (BLASTn)",
+             "Phylum (BLASTn)",
+             "Subphylum (BLASTn)",
+             "Class (BLASTn)",
+             "Subclass (BLASTn)",
+             "Order (BLASTn)",
+             "Suborder (BLASTn)",
+             "Family (BLASTn)",
+             "Subfamily (BLASTn)",
+             "Genus (BLASTn)",
+             # "max_tax","BLAST ID",
+      "Curated ID",
+      "Obs. Curadoria",
+
+      "Identification",
+      "Identification Max. taxonomy",
+             
+             
+             "Possible Metazoa", 
+             "Final ID (BLASTn)",
+            # "Final ID (DADA2)",
+             "BLASTn pseudo-score","Primer expected length","ASV Size (pb)",
+             starts_with("SAMPLE ")
+             )) %>%  
+  mutate_if(is.numeric, replace_na, replace = 0)
+
+smp_abd_ID_eco %>% 
+         writexl::write_xlsx(
+                    # path = paste0(results_path,"/",
+                    #               unique(smp_abd_ID_Final$Project),"/",
+                    #               unique(smp_abd_ID_Final$Project),
+                    #               "-todas_infos_ASVs-",Sys.Date(),".xlsx"),
+                    path = paste0(results_path,"/",project_name,"-ASVs_x_amostras-",Sys.Date(),".xlsx"),
+                    col_names = TRUE,format_headers = TRUE)
+
+
+}
+dim(smp_abd_ID)
+dim(smp_abd_ID_eco)
+dim(smp_abd_ID_eco_ID)
+
+colnames(smp_abd_ID_eco) %>% paste0(collapse = '",\n"') %>% cat()
+```
+
+
+### Save IDs Vs. Samples table
+
+
+```r
+# generate IDs Vs. Samples table from complete table ----
+
+smp_abd_ID_eco %>% colnames()%>% paste0(collapse = '",\n"') %>% cat()
+
+sum_uniq(vec = smp_abd_ID$`ASV (Sequence)`)
+# 
+smp_abd_ID_eco_ID <- smp_abd_ID_Final %>%
+  
+  
+  filter(`Read origin` %in% c("R1","R2")) %>%
+  filter(`1_indentity` >= 80) %>%
+  filter(Type %in% c("Sample")) %>%
+  filter(`Primer expected length` %in% c("in range")) %>%
+  filter(`Kingdom (BLASTn)` %in% c("Metazoa")) %>%
+  filter(`Class (BLASTn)` %in% c("Actinopteri")) %>%
+  # filter((`Possible contamination` %in% c("True detection") & Type %in% c("Sample") ) |Type %in% c("PCR control") ) %>%
+  
+  group_by(OTU,`Final ID (BLASTn)`) %>% 
+  mutate("Min. BLASTn pseudo-score" = min(`BLASTn pseudo-score`),
+         "Max. BLASTn pseudo-score" = max(`BLASTn pseudo-score`),
+         "Num. ASVs in OTU" = length(unique(`ASV (Sequence)`))) %>% 
+  relocate("Min. BLASTn pseudo-score", "Max. BLASTn pseudo-score","OTU") %>% 
+  ungroup() %>%
+  # filter(Researcher %in% c("ICMBio")) %>% 
+  # filter(`Read origin` %in% c("merged")) %>% 
+  # 
+   mutate(Identification = if_else(Identification %in% c(NA,"NA"),"NA",Identification)) %>% 
+  dplyr::select(-c("Relative abundance to all samples", 
+            "Sample total abundance",
+            "ASV absolute abundance",
+            # "Metadata 1","Metadata 2","Metadata 3","Metadata 4","Metadata 5","obs",
+            "Curated ID",
+            "Identification",
+            # "Final ID (DADA2)",
+            # "Final ID (BLASTn)",
+            # "Extraction.control",
+            "PCR control",
+            "Prop. to PCR control",
+            "Prop. to Ext control",
+            "Prop. to Filt control",
+            "Possible contamination",
+            "Primer expected length",
+            "Type",
+            "blast ID Origin",
+            # "Read origin",
+                       # "BLASTn pseudo-score","Order (BLASTn)","BLAST_subclass","Class (BLASTn)","Phylum (BLASTn)","BLAST_subphylum",
+                       # "Kingdom (BLASTn)",
+            "1_subject header","1_subject","1_indentity","1_qcovhsp",
+                       "1_length","1_mismatches","1_gaps","1_query start","1_query end",
+                       "1_subject start","1_subject end","1_e-value","1_bitscore","2_subject header",
+                       "2_subject","2_indentity","2_qcovhsp","2_length","2_mismatches",
+                       "2_gaps","2_query start","2_query end","2_subject start","2_subject end",
+                       "2_e-value","2_bitscore","3_subject header","3_subject","3_indentity",
+                       "3_qcovhsp","3_length","3_mismatches","3_gaps","3_query start",
+                       "3_query end","3_subject start","3_subject end","3_e-value","3_bitscore",
+                       "Contamination control","ASV Size (pb)","ASV header","ASV (Sequence)","OTU"
+            )) %>% 
+  pivot_wider(
+    id_cols = c("Primer","Primer","Read origin",
+                # "Identification",
+                # 
+      "Final ID (BLASTn)",
+      # "Final ID (DADA2)",
+                
+                
+                        # "Kingdom (DADA2)",
+                        # "Phylum (DADA2)",
+                        # "Class (DADA2)",
+                        # "Order (DADA2)",
+                        # "Family (DADA2)",
+                        # "Genus (DADA2)",
+                        # "Specimen (DADA2)",
+                        # "Species (DADA2)",
+                        # "Basin (DADA2)",
+                        # "Exact Genus/Species (DADA2)",
+                        # 
+                        "Min. BLASTn pseudo-score",
+      "Max. BLASTn pseudo-score",
+                
+                "Possible Metazoa",
+              "Superkingdom (BLASTn)",
+              "Kingdom (BLASTn)",
+             "Phylum (BLASTn)",
+             "Subphylum (BLASTn)",
+             "Class (BLASTn)",
+             "Subclass (BLASTn)",
+             "Order (BLASTn)",
+             "Suborder (BLASTn)",
+             "Family (BLASTn)",
+             "Subfamily (BLASTn)",
+             "Genus (BLASTn)",
+                "BLAST ID","max_tax"),
+    # values_from = c("Relative abundance on sample"),
+    values_from = c("Clean relative abd. on sample"),
+    values_fn = sum_uniq,
+    names_from = "Unique_File_name",
+    names_prefix = "SAMPLE ",
+    names_sort = TRUE) %>% 
+  relocate(c("Primer","Primer",
+             "Read origin",
+             
+             
+                        # "Kingdom (DADA2)",
+                        # "Phylum (DADA2)",
+                        # "Class (DADA2)",
+                        # "Order (DADA2)",
+                        # "Family (DADA2)",
+                        # "Genus (DADA2)",
+                        # "Specimen (DADA2)",
+                        # "Species (DADA2)",
+                        # "Basin (DADA2)",
+                        # "Exact Genus/Species (DADA2)",
+             
+              "Superkingdom (BLASTn)",
+              "Kingdom (BLASTn)",
+             "Phylum (BLASTn)",
+             "Subphylum (BLASTn)",
+             "Class (BLASTn)",
+             "Subclass (BLASTn)",
+             "Order (BLASTn)",
+             "Suborder (BLASTn)",
+             "Family (BLASTn)",
+             "Subfamily (BLASTn)",
+             "Genus (BLASTn)",
+             "max_tax","BLAST ID",
+             "Min. BLASTn pseudo-score",
+             "Max. BLASTn pseudo-score",
+             "Possible Metazoa", 
+             # "Identification",
+             # 
+      "Final ID (BLASTn)",
+      # "Final ID (DADA2)",
+             # "BLASTn pseudo-score",
+             starts_with("SAMPLE ")
+             )) %>%  
+  mutate_if(is.numeric , replace_na, replace = 0)
+
+
+smp_abd_ID_eco_ID %>% 
+writexl::write_xlsx(
+                    path = paste0(results_path,"/",prjct_rad,"-todas_infos_wide-OTUs-",Sys.Date(),".xlsx"),
+                    col_names = TRUE,format_headers = TRUE)
+```
+
+### Save Summary table
+
+
+```r
+#summary of IDs per sample ----
+smp_abd_ID_Final$Project %>% unique()
+
+smp_abd_ID_summary <- smp_abd_ID_Final %>%  
+  filter(Type == "Sample") %>%
+  # filter(`Possible Metazoa` == FALSE) %>%
+group_by(Unique_File_name,`Curated ID`
+         # ,`Read origin`
+         ) %>% 
+  summarize(
+    `Num ASVs` = length(unique(`ASV (Sequence)`)),
+    `Num OTUs` = length(unique(`OTU`)),
+    `ID Abundance on sample` = sum(`Relative abundance on sample`)/100,
+    `Minimum Identity` = min(`1_indentity`),
+    ) %>% 
+  ungroup()
+
+
+
+writexl::write_xlsx(x = smp_abd_ID_summary,
+                    path = paste0(results_path,"/",
+                                  unique(smp_abd_ID_Final$Project),"/",
+                                  unique(smp_abd_ID_Final$Project),"-summary_",Sys.Date(),".xlsx"),
+                    col_names = TRUE,format_headers = TRUE)
+
+
+# summary of ASVs and OTUs and IDs per Read origin ----
+
+smp_abd_ID$`Class (BLASTn)` %>% table()
+smp_abd_ID$`Class (BLASTn)` %>% table() 
+smp_abd_ID_Final %>% 
+  filter(`Class (BLASTn)` %in% c("Actinopteri")) %>%
+  # group_by(Group,Type,Primer,`Read origin`) %>% 
+  # group_by(Type,Primer,`Read origin`) %>% 
+  group_by(Type,Primer) %>% 
+  summarize(Type = unique(Type),
+            Primer = unique(Primer),
+            # `Read origin` = unique(`Read origin`),
+            `Num amostras` = length(unique(Unique_File_name)),
+            `Num ASVs encontradas` = length(unique(`ASV (Sequence)`)),
+            `Num OTUs encontradas` = length(unique(`OTU`)),
+            `Num ASVs identificadas pelo BLASTn` = length(unique(`ASV (Sequence)`[!is.na(`Final ID (BLASTn)`)])),
+            `Proporção de ASVs identificadas` = (`Num ASVs identificadas pelo BLASTn`/`Num ASVs encontradas`*100)
+            # ,
+            # `Num ASVs prováveis bactérias` = length(unique(`ASV (Sequence)`[`Possible Metazoa` == TRUE])),
+            # `Proporção de ASVs prováveis bactérias` = (`Num ASVs prováveis bactérias`/`Num ASVs encontradas`*100)
+            ) %>% 
+  View() 
+  writexl::write_xlsx(
+    path = paste0(results_path,"/",prjct_rad,"-primer_summary-",Sys.Date(),".xlsx"),
+    col_names = TRUE,format_headers = TRUE)
+```
+
+# Reload results table after curation
+
+
+```r
+curated_smp_abd_ID <- smp_abd_ID_Final  
+
+
+
+# curated_IDs_tbl <- read.csv(file = "~/prjcts/ecomol/analyses/2023/WWFdata/EM132_Ecomol_ovoselarvas-IDs_curadas.csv",check.names = F,)
+
+
+# 
+#   smp_abd_ID_DAN <- readr::read_csv(file = "~/prjcts/ecomol/analyses/2023/WWFdata/EM132_Ecomol_ovoselarvas-ASVs_vs_Amostras_curada.csv") %>% as_tibble() %>% 
+#     select(-c("X84","X85","X86"))
+# # recalculate abundances after removing undesired taxa ----
+
+colnames(curated_IDs_tbl)
+
+# # a partir da tabela do daniel
+# curated_smp_abd_ID <-
+#   smp_abd_ID_DAN %>% 
+#   pivot_longer(cols = starts_with(match = "SAMPLE"),names_to = "Unique_File_name",values_to = "Relative abundance on sample") %>% 
+#   left_join(curated_IDs_tbl,by = "Final ID (BLASTn)") %>%
+#   mutate(Unique_File_name = str_remove_all(Unique_File_name,pattern = "SAMPLE ")) %>% 
+#   left_join(primers_n_samples %>% select("Metadata 1","Metadata 2","Unique_File_name","Type"),
+#             by = "Unique_File_name") %>% 
+#   relocate(c("Unique_File_name", "Relative abundance on sample","Curated ID", "Final ID (BLASTn)", "Origin","Metadata 1","Metadata 2")) %>% 
+#   filter(!`Relative abundance on sample` == 0)
+  
+  #a partir da smp_abd_ID original
+smp_abd_ID$Primer %>% unique()
+curated_smp_abd_ID$Primer %>% unique()
+
+# curated_smp_abd_ID <-
+#   smp_abd_ID_Final %>% 
+#   filter(Type %in% c("Sample"),
+#          # `Primer expected length` %in% c("in range"),
+#          `BLASTn pseudo-score` >= 96
+#          # `BLASTn pseudo-score` >= 98
+#          # `Class (BLASTn)` %in% c("Actinopteri")
+#          ) %>% 
+#   # select(-c("Curated ID")) %>% 
+#   # left_join(curated_IDs_tbl,by = "Final ID (BLASTn)") %>%
+#   relocate(c("Unique_File_name", "Relative abundance on sample","Curated ID", "Final ID (BLASTn)",
+#              "Metadata.1","Metadata.2","Order (BLASTn)")) %>% 
+#   filter(!`Relative abundance on sample` == 0)
+#   
+#   
+#   curated_smp_abd_ID$`Curated ID` %>% unique() %>% sort()
+  
+  
+  
+  
+#   
+table_of_abundances <- curated_smp_abd_ID %>% 
+group_by(`Curated ID`,Unique_File_name) %>%
+  mutate("Relative abundance on sample sum" = sum(`Relative abundance on sample`),
+         "Total abundance on sample sum" = sum(`ASV absolute abundance`),
+         "Num ASVs per ID" = length(unique(`ASV (Sequence)`))) %>%
+  ungroup() %>% 
+  select(c(
+    # "Sample",
+    "Unique_File_name","Curated ID", 
+    # "Final ID (BLASTn)","Origin",
+    "Relative abundance on sample sum",
+           # "Relative abundance on sample",
+           "Total abundance on sample sum")) %>% 
+  unique() 
+
+
+table_of_abundances %>% 
+  select(-c(`Total abundance on sample sum`)) %>% 
+  pivot_wider(names_from = "Metadata.1",values_from = c("Relative abundance on sample sum")) %>% 
+  writexl::write_xlsx(
+                    path = paste0(results_path,"/",prjct_rad,"-ABDs_relativas.xlsx"),
+                    col_names = TRUE,format_headers = TRUE)
+
+
+
+table_of_abundances %>% 
+  select(-c(`Relative abundance on sample sum`)) %>% 
+  pivot_wider(names_from = "Metadata.1",values_from = c("Total abundance on sample sum")) %>% 
+  writexl::write_xlsx(
+                    path = paste0(results_path,"/",prjct_rad,"-ABDs_absolutas.xlsx"),
+                    col_names = TRUE,format_headers = TRUE)
+
+
+
+
+
+# 
+# 
+# writexl::write_xlsx(x = curated_smp_abd_ID,
+#                     path = paste0(results_path,"/",prjct_rad,"-todas_info_da_analise-NO_BAC",Sys.Date(),".xlsx"),
+#                     col_names = TRUE,format_headers = TRUE)
+```
+
+
+# Plot ASVs and samples heatmap
+
+
+```r
+scales::show_col(viridis::turbo(n=10))
+
+options(scipen = 500,digits = 4)
+
+library(ggh4x)
+
+# 
+# curated_smp_abd_ID <- curated_smp_abd_ID %>% 
+#   mutate(metadata_1 = case_when(str_detect(string = Sample, pattern = "^EM132-AML") ~ "Larvas",
+#                                 str_detect(string = Sample, pattern = "^EM132-AMO") ~ "Ovos",
+#                                 str_detect(string = Sample, pattern = "^EM132-Neg") ~ "Control"),
+#          metadata_2 = str_remove(string = Sample, pattern = "EM132-AML|EM132-AMO"))
+
+
+smp_abd_ID$Sample %>% unique()
+smp_abd_ID$Metadata.1 %>% unique()
+smp_abd_ID$Metadata.2 %>% unique()
+smp_abd_ID$Metadata.3 %>% unique()
+smp_abd_ID$Metadata.4 %>% unique()
+smp_abd_ID$Project %>% unique()
+
+# mtdt1_lvs <- c("SFM","SFI","BAM","SAM","PARAC","SFC","PP","NEG")
+
+curated_smp_abd_ID$Metadata.3 %>% unique()
+
+
+
+# # New facet label names for supp variable
+# supp.labs <- c("Sem Intervenção", "Com Intervenção", "Unidade de Conservação")
+# names(supp.labs) <- c("SI", "CI", "UC")
+
+
+  # labeller = labeller(dose = dose.labs, supp = supp.labs)
+
+
+
+curated_smp_abd_ID$`Class (BLASTn)` %>% unique()
+curated_smp_abd_ID$`Class (BLASTn)` %>% unique()
+
+
+
+curated_smp_abd_ID$`Class (BLASTn)`[curated_smp_abd_ID$`Final ID (BLASTn)` %in% c("Caiman latirostris")] <-  "Reptilia"
+curated_smp_abd_ID$`Class (BLASTn)`[curated_smp_abd_ID$`Final ID (BLASTn)` %in% c("Phrynops hilarii")] <-  "Reptilia"
+curated_smp_abd_ID$`Class (BLASTn)`[curated_smp_abd_ID$`Final ID (BLASTn)` %in% c("Cow 25kD")] <-  "Bos taurus"
+curated_smp_abd_ID$Metadata.1[is.na(curated_smp_abd_ID$Metadata.1)] <-  ""
+
+
+curated_smp_abd_ID$Metadata.2 %>% unique()
+
+curated_smp_abd_ID <- curated_smp_abd_ID %>% 
+  mutate(`Metadata.2` = str_replace_all(string = `Metadata.2`,
+                                                             pattern = "DIAS APÓS QUEIMA",
+                                                             replacement = "DAQ")) %>% 
+  mutate(`Metadata.2` = factor(`Metadata.2`,levels = c("PRÉ-QUEIMA", "7 DAQ", "30 DAQ", "60 DAQ")))
+
+
+for (project in all_projects) {
+
+# project <- "Teles Pires"
+
+project_name <- project %>% str_replace_all(pattern = " ",
+                                        replacement = "_")
+  
+N_samples <-   curated_smp_abd_ID %>%
+  filter(str_detect(string = Project, pattern = project)) %>% 
+  pull(Unique_File_name) %>% unique() %>% length()
+
+
+N_IDs <- curated_smp_abd_ID %>%
+  filter(str_detect(string = Project, pattern = project)) %>% 
+  pull(`Final ID (BLASTn)`) %>% unique() %>% length()
+
+
+
+IDs_smpls_heat <- 
+curated_smp_abd_ID %>% 
+  filter(str_detect(string = Project, pattern = project)) %>%
+  unite(col = "Sample", Sample, Primer,sep = "-",remove = F) %>% 
+  # # filter(if_else(Primer %in% c("VF2_FR1d;Fish1;Fish2"),
+  # #                `Read origin` %in% c("R1","R2"),
+  # #                `Read origin` %in% c("merged"))) %>% 
+  # mutate(`Read origin` = case_when(`Read origin` %in% c("merged") ~ "",
+  #                                  TRUE ~ `Read origin`)) %>% 
+  arrange(Sample) %>% 
+  # mutate("Unique_File_name" = factor(Unique_File_name, levels = sample_levels)) %>%
+  filter(Type %in% c("Sample")) %>%
+  filter(`Clean relative abd. on sample` >= 0.0005) %>%
+  filter(`Primer expected length` %in% c("in range")) %>%
+  filter(`BLASTn pseudo-score` >= 80) %>%
+  filter(`Kingdom (BLASTn)` %in% c("Metazoa")) %>%
+  # filter(`Class (BLASTn)` %in% c("Actinopteri")) %>%
+  # filter((`Contamination status` %in% c("True detection") & Type %in% c("Sample") ) |Type %in% c("PCR control") ) %>%
+  filter((`Contamination status` %in% c("True detection") )) %>%
+                    filter((!str_detect( string = `Final ID (BLASTn)`,pattern = c("environmental") ))) %>%
+  # group_by(`Curated ID`,Sample) %>%
+  # group_by(`Final ID (BLASTn)`,Unique_File_name,`Read origin`) %>%
+  group_by(`Final ID (BLASTn)`,Unique_File_name) %>%
+  # group_by(`Final ID (BLASTn)`,Sample) %>%
+  # group_by(`Genus (BLASTn)`,Sample) %>%
+  # group_by(Identification,Unique_File_name,`Read origin`) %>%
+  # group_by(`Final ID (DADA2)`,Unique_File_name,`Read origin`,`ASV (Sequence)`) %>%
+  # group_by(`Final ID (BLASTn)`,sample_Sample,`Read origin`,`ASV (Sequence)`) %>%
+  # group_by(`Final ID (BLASTn)`,Unique_File_name,`Read origin`,`ASV (Sequence)`) %>%
+  # mutate("Relative abundance on sample sum (%)" = round(sum(`Relative abundance on sample`),digits = 3),
+  mutate("Relative abundance on sample sum (%)" = round(sum(`Clean relative abd. on sample`)*100,digits = 3),
+         "Num ASVs per ID" = length(unique(`ASV (Sequence)`))) %>% 
+  ungroup() %>% 
+  group_by(`Final ID (BLASTn)`,`Read origin`) %>%
+  # group_by(`Genus (BLASTn)`) %>% 
+  mutate("Min BLASTn pseudo-score" = round(min(`BLASTn pseudo-score`),digits = 2)
+         ) %>%
+  ungroup() %>% 
+  # filter(`Relative abundance on sample sum (%)` > 0.05) %>%
+  # unite(col = ID_score,sep = "   ", `Curated ID`,
+  #       `Min. BLASTn pseudo-score`) %>% 
+  ggplot(aes( 
+    x = interaction(Sample, Unique_File_name, sep = " - "),
+    # x = interaction(`Read origin`,Unique_File_name,sep = " "),
+    # x = interaction(`Read origin`,Sample,sep = " "),
+    # x = Sample,
+    # x = str_remove(Sample,pattern = "-MiFish|-MiBird"),
+  # ggplot(aes(x=`Metadata.1`,
+             # y=`Curated ID`,
+             # y=Identification,
+             y = interaction(`Final ID (BLASTn)`,`Min BLASTn pseudo-score`,sep = " / ",lex.order = T),
+             # y = interaction(`Genus (BLASTn)`,`Min BLASTn pseudo-score`,sep = " / "),
+             # y=interaction(`Final ID (DADA2)`,`Final ID (BLASTn)`,sep = " / "),
+             # y=`ID_score`,
+             fill =`Relative abundance on sample sum (%)`,
+             # col=`Possible contamination`,
+                                                 # group=`ASV (Sequence)`,
+             # group=`Genus (BLASTn)`
+             group=`Final ID (BLASTn)`
+             # linetype = `Possible contamination`,
+             # label = `Num ASVs per ID`
+             )) +
+  geom_tile(size=0.25,
+            height = 0.75,
+            width = 0.75) +
+  geom_text(aes(label = round(`Relative abundance on sample sum (%)`,digits = 1),
+                col = `Relative abundance on sample sum (%)`/ 10), size = 1.5
+            
+             # ,fill="white", label.size = 0.01, col = "Black",show.legend = TRUE
+             ) +
+  # stat_contour(aes(z=`Possible contamination`),
+  #              color = c("#ff000d",NA)) +
+  # scale_fill_gradientn(name = "Relative abd.\n on sample (%)",
+  scale_fill_gradientn(name = "Abundância relativa\nna amostra (%)",
+                       # colours = c("white","dark red","red", "yellow","green","dark green","blue"),
+                       colours = c("white", "yellow","green","dark green","blue"),
+                       # colours = viridis::viridis(n = 10,direction = -1),
+                       values = c(0,1),
+                       breaks = c(0.001,0.01, 0.05, 0.25,1,2.5,5,10,25,50,100),
+                       na.value ="white",
+                       trans="log10")+
+  scale_colour_gradientn(name = "Abundância relativa\nna amostra (%)",
+                       # colours = c("white","dark red","red", "yellow","green","dark green","blue"),
+                       colours = rev(c("white", "yellow","green","dark green","blue")),
+                       # colours = viridis::viridis(n = 10,direction = -1),
+                       values = c(0,1),
+                       breaks = c(0.001,0.01, 0.05, 0.25,1,2.5,5,10,25,50,100),
+                       na.value ="white",
+                       trans="log10") +
+  # scale_colour_manual(values = c("#d91133",NA)) +
+  scale_linetype_manual(values=c("solid",NA)) +
+  # guides(color = guide_legend(override.aes = list(fill = "white", 
+  #                                                 size = 10))) +
+  theme_grey(base_line_size = 0.025,base_size = 8) +
+  # theme(axis.text.x = element_text(angle = 0,hjust = 1)) +
+  xlab("Pontos de coleta") +
+  # ylab("Espécies") +
+  ylab("Espécies / BLASTn pseudo-score") +
+  # ylab("Identificação DADA2 / Identificação BLASTn") +
+    # scale_y_discrete(limits=rev) +
+  # ggtitle(label = paste0("Ecomol - ",prjct_rad),
+  # ggtitle(label = paste0("Ecomol - ",prjct_rad),
+  ggtitle(label = paste0("ECOMOL - ",project, " - ",Sys.Date()),
+              # subtitle = "Espécies identificados nas amostras\n             (com BLASTn pseudo-score >= 98% e ASVs de tamanho entre 221 e 256 - apenas cordados)") +                                                                # Change font size
+              # subtitle = "Número de ASVs por espécie: Identificações por BLASTn com >= 98% de similaridade") +      
+              # subtitle = "Número de ASVs por espécie: Identificações por BLASTn com >= 90% de similaridade & RRA limpo > 0.5%") +      
+              # subtitle = "Abundância relativa de cada identificação obtida por BLASTn, sem cortes de abundância") +      
+              # subtitle = "Abundância relativa de cada identificação obtida por BLASTn, considerando apenas IDs com BLASTn pseudo-score >= 80% e Abundância relativa >= 0.5%") +      
+              subtitle = "Abundância relativa de cada identificação obtida por BLASTn\nIDs com BLASTn pseudo-score >= 80% e RRA >= 0.05%") +      
+  # \n ASVs detectadas nos controles negativos já removidas das amostras.
+    # facet_grid(rows = vars(`Class (BLASTn)`,`Order (BLASTn)`),
+    facet_grid(rows = vars(`Phylum (BLASTn)`,`Class (BLASTn)`,`Order (BLASTn)`),
+    # facet_grid(rows = vars(`Class (BLASTn)`,`Order (BLASTn)`,`Family (BLASTn)`),
+    # facet_grid(rows = vars(`Class (DADA2)`,`Order (DADA2)`,`Family (DADA2)`),
+    # facet_grid(rows = vars(`Order (BLASTn)`,`Family (BLASTn)`),
+               # cols = vars(Primer),
+               # cols = vars(Researcher,Project),
+               cols = vars(`Metadata.2`,`Metadata.5`),
+               # cols = vars(Project,metadata_1),
+               # cols = vars(Local,Tratamento),
+                                # labeller = labeller(`Metadata.3` = supp.labs),
+    # facet_grid(rows = vars(`Possible contamination`,`Read origin`),
+               # cols = vars(Origin),
+               scale = 'free',space = 'free') +# Change font size
+              # subtitle = "Espécies identificados nas amostras\n             (com BLASTn pseudo-score >= 98% & RRA >= 0.05) - apenas peixes.") +                                                                # Change font size
+  theme(legend.position = "bottom",
+        strip.text.y = element_text(size = 10,angle = 0),
+        strip.text.x = element_text(size = 10),
+        plot.title = element_text(size=12),
+        plot.subtitle = element_text(size=10),
+        axis.text.y = element_text(size=8),
+        axis.title.x =element_text(size=14), 
+        axis.title.y =element_text(size=14), 
+        axis.text.x = element_text(size=8,angle = 45, hjust = 1),
+        legend.text= element_text(size=8),
+        legend.title = element_text(size=10),
+        legend.key.width = unit(4, 'cm'),
+        legend.key.height = unit(0.5, 'cm'),
+        panel.border = element_rect(colour = "#000000", fill = NA),
+        panel.grid = element_line(colour = "#ffffff",linewidth = 0.01)
+        )  +
+  geom_vline(xintercept = c(seq(0.5,220.5,1)), linewidth = 0.1) +
+  guides(colour="none")
+# facet_wrap2(facets = `Phylum (BLASTn)`~ Metadata 1)
+
+# IDs_smpls_heat
+# pg <- ggplotGrob(IDs_smpls_heat)
+# 
+# 
+# 
+# for(i in which(grepl("strip-r", pg$layout$name))){
+#   pg$grobs[[i]]$layout$clip <- "off"
+# }
+# grid::grid.draw(pg)
+
+
+
+ggsave(file = paste0(figs_path,"/",
+                     project_name,"-","heatmap","-Sps_BLASTn_abd.pdf"),
+                     # unique(smp_abd_ID_Final$Project),"/",
+                     # unique(smp_abd_ID_Final$Project),"-heatmap","-Sps_BLASTn.pdf",collapse = ""),
+     plot = IDs_smpls_heat,
+     device = "pdf",
+     width = ifelse(N_samples <= 10, 15, (N_samples/2.5)+15),
+     height = ifelse(N_IDs <= 20, 10, N_IDs/4+5),
+     units = "cm",
+     limitsize = FALSE,
+     dpi = 300)
+
+}
+
+
+
+smp_abd_ID_Final %>% 
+  filter(`Kingdom (BLASTn)` %in% c("Metazoa")) %>% 
+  pull(`Phylum (BLASTn)`) %>% table() %>% plot()
+
+
+library(pheatmap)
+library(RColorBrewer)
+
+smp_abd_ID_eco %>% colnames()
+  
+
+
+
+
+
+# Plot the heatmap
+pheatmap(test, color=myColor, breaks=myBreaks)
+
+smp_abd_ID_eco_ID %>% 
+  select("Identification","Primer",17:202) %>% 
+  filter(!Identification %in% c(NA,"NA") ) %>% 
+  # filter(Primer %in% c("mBir") ) %>% 
+  filter(Primer %in% c("p12SV5") ) %>% 
+  # rename_if(.predicate = str_detect(string = .,pattern = "SAMPLE"),.funs = str_remove_all(string = .,pattern = "SAMPLE")) %>% 
+  as.data.frame() %>% 
+  `rownames<-`(.$`Identification`) %>% 
+  select(-c("Identification","Primer")) %>% 
+  select_if(colSums(.) != 0) %>% 
+  t() %>% 
+  # log() %>% 
+  pheatmap::pheatmap(
+    color = colorRampPalette(brewer.pal(n = 9, name =  "Reds"))(9),
+    fontsize = 6,
+    breaks = c(1,2,4,8,16,32,64,100),
+                     main = "EM_",
+                     filename = "~/prjcts/ecomol/analyses/2023/WWFresults/figs/heatmap_p12SV5.pdf"
+                     )
+```
+
+
+
+## arvores por grupo
+
+
+```r
+#generate fasta from ASVs and align per primer ----
+
+
+#all ----
+# giving our seq headers more manageable names (ASV_1, ASV_2...)
+
+all_asv_seqs_cur <- smp_abd_ID_Final %>% 
+  filter(`Read origin` %in% c("merged")) %>% 
+  filter(`Primer expected length` %in% c("in range")) %>% 
+  select(c(`ASV (Sequence)`,
+         `ASV Size (pb)`,
+         `ASV header`,
+         OTU,`Final ID (BLASTn)`,`Final ID (DADA2)`,Primer, Sample)) %>% 
+  group_by(`ASV (Sequence)`) %>% 
+  mutate("Found in" =  unique(Sample) %>% str_remove_all(pattern = "EM118_") %>% paste0(collapse = "-")) %>% 
+  ungroup() %>% 
+  select(-c("Sample")) %>% 
+  unique()
+
+
+
+
+all_asv_seqs_cur <- all_asv_seqs_cur %>% 
+  mutate("Full header" = paste0(`ASV header`,"-OTU_",OTU,"-",Primer,"-","Bn_",`Final ID (BLASTn)`,"-DD2_",`Final ID (DADA2)`,"-in_",`Found in`)) 
+
+
+#write fasta file with ASVs and Taxonomy
+all_asv_seqs_cur <- c(rbind(all_asv_seqs_cur$`Full header`, all_asv_seqs_cur$`ASV (Sequence)`))
+
+write(all_asv_seqs_cur, paste0(results_path,"/",prjct_rad,"-ASVs_metazoa_for_trees.fasta"))
+
+
+
+all_asv_seqs_cur <- 
+Biostrings::readDNAStringSet(filepath = paste0(results_path,"/",prjct_rad,"-ASVs_metazoa_for_trees.fasta")) %>%
+  DECIPHER::RemoveGaps()
+
+
+
+LGC_12Sdb_seqs <- 
+Biostrings::readDNAStringSet(filepath = "~/prjcts/fish_eDNA/DB/mai22/DB/LGC12Sdb_251seqs-mai22-pretty_names_noGaps.fasta") %>%
+  DECIPHER::RemoveGaps()
+
+
+ASVs_N_DB <- c(all_asv_seqs_cur, LGC_12Sdb_seqs)
+
+
+ASVs_N_DB_algn <- DECIPHER::AlignSeqs(myXStringSet = ASVs_N_DB, 
+                                      refinements = 100,
+                                      iterations = 100,
+                                      verbose = TRUE)
+
+DECIPHER::BrowseSeqs(ASVs_N_DB_algn)
+
+
+library(DECIPHER)
+ASVs_N_DB_algn_sub <- Biostrings::subseq(x = ASVs_N_DB_algn,
+                                       start = 18 ,end = 247)
+
+
+
+
+ASVs_N_DB_algn_sub <- ASVs_N_DB_algn_sub %>%
+  DECIPHER::RemoveGaps() %>% 
+  DECIPHER::AlignSeqs(refinements = 100,
+                                      iterations = 100,
+                                      verbose = TRUE)
+#write alignments ----
+
+
+
+ASVs_N_DB_algn_sub
+
+
+
+
+
+ASVs_N_DB_algn_sub_dist <- DECIPHER::DistanceMatrix(myXStringSet = ASVs_N_DB_algn_sub,
+                                            includeTerminalGaps = TRUE,
+                                            correction = "Jukes-Cantor",
+                                            processors = 60,type = "dist",
+                                            verbose = TRUE)
+
+ASVs_N_DB_algn_sub_dist %>% as.matrix() %>% 
+pheatmap::pheatmap()
+
+
+
+View(ASVs_N_DB_algn_sub_dist)
+str(ASVs_N_DB_algn_sub_dist)
+
+
+ASVs_N_DB_tree <- ape::njs(ASVs_N_DB_algn_sub_dist)
+
+
+ASVs_N_DB_tree$tip.label
+
+ape::write.tree(phy = ASVs_N_DB_tree,digits = 5,file =
+                  paste0(results_path,"/","WWF_7-MiBird-Arvore_ASVs_12Sdb.nwk"))
+
+
+
+
+
+
+
+
+#plot trees
+library(ggtree)
+
+# leafs_color_tbl <- tibble(seq = names(all_ASVs_12SDB_algn)) %>% 
+#   mutate(category = if_else(str_detect(string = .$seq,pattern = "ASV_"),"ASV","DB"))
+
+
+
+ASVs_N_DB_tree_nwck <- ggtree::read.tree(file = paste0(results_path,"/","WWF_7-MiBird-Arvore_ASVs_12Sdb.nwk"))
+
+
+
+
+
+ASVs_N_DB_tree_nwck$tip.label
+```
+
+
+
+
+
+
+
+
+
+
+
+### Ploting ASVs
+
+
+```r
+#28- ASVs plots by sample and species ----
+
+
+scales::show_col(scales::hue_pal(c = 200, h= c(0,360))(50))
+    scales::show_col(viridis::viridis(n = 9))
+    scales::show_col(viridis::turbo(n =15))
+
+
+scales::show_col(c())
+scales::show_col(c("#440154", "#440184","#FF4A00","#ba0202","#0009DD","#007004", "#24768e", "#26a784", "#79d051", "#ff2b77"))
+# colors6 <- scales::show_col(c("#440154", "#0009DD","#007004","#ba0202","#FF4A00", "#03435e"))
+colors6 <-c("#440154", "#0009DD","#007004","#ba0202","#FF4A00", "#03435e")
+
+colors4 <-c("#007004","#fbff00","#FF4A00","#ba0202")
+colors5 <-c("#007004","#fbff00","#FF4A00","#ba0202")
+
+scales::show_col(colors6)
+
+scales::show_col(colors4)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Tamanho das ASVs por amostra e Read origin e blast id cov ---- 
+
+
+
+
+# ASV_legth_by_Sample <- curated_smp_abd_ID %>% 
+ASV_legth_by_Sample <- smp_abd_ID_Final %>% 
+  mutate(Sample=factor(Sample,levels = sample_levels)) %>% 
+  # mutate(`Read origin`=factor(`Read origin`,levels = c("merged", "R1", "R2","concat"))) %>% 
+  # filter(`Primer expected length` %in% c("in range")) %>%
+  # filter(!`Curated ID` %in% c(NA,"NA")) %>%
+# filter(Abundance >=1) %>%
+  # ggplot(aes(y=Sample,
+  ggplot(aes(y=Sample,
+             # x=`Size (pb)`,
+             x=`ASV Size (pb)`,
+             # colour = Primer,
+             fill = `BLASTn pseudo-score`,
+             col = `BLASTn pseudo-score`,
+             # shape = `Primer expected length`,
+             shape = is.na(`Curated ID`),
+             size =`Relative abundance on sample`,
+             # size =`Clean relative abd. on sample`, 
+             alpha = 0.05
+             )) +
+  # geom_vline(aes(xintercept = c(260)), size = 0.01, col="#C0C0C0")+
+  # geom_vline(aes(xintercept = c(20)), size = 0.01, col="#C0C0C0")+
+  geom_jitter(height = 0.3,
+              width = 0.3) +
+  # scale_color_manual(
+  #   labels = c("MiMammal-U","MiFish", "NeoFish", "COI-1", "COI-3","NeoFish/MiFish"),
+  #                    values = alpha(colour = colors6 ,alpha =  0.3)) +
+    # scale_color_viridis(discrete = TRUE,option = "viridis",alpha = 0.3) +
+    # scale_color_hue( c=100) +
+    # scale_color_manual("Origem da ASV",values =colors6[c(3,5,4)]) +          #origen
+                                        # scale_color_manual("Origem da ASV",values =viridis::inferno(100)) +          #origen
+                                         scale_fill_gradientn(colours = rev(viridis::plasma(256))) +
+                                         scale_color_gradientn(colours = rev(viridis::plasma(256))) +          #origen`
+    # scale_color_manual("Origem da ASV",values =colors4) +          #origen
+    # scale_color_manual("Primer",values =viridis::viridis(n = 9)[c(2,5,8)]) +
+    # scale_color_manual("Primer",values =viridis::turbo(n =15)[c(1,3,15)]) +
+  scale_size_continuous(name = "Abundância\n     relativa\nna amostra (%)",
+                        breaks = c(0,1,10,20,30,40,50,60,70,80,90,100),
+                        # scale_radius(range = c(1,20))
+                        ) +
+  # coord_fixed(ratio = 3) +
+  # scale_x_continuous(breaks = c(20,30,40,50,60,70,80,90,100,110,120,130,140,160,180,200,220,240,260,280,300,320,340),expand = c(0.02,0.02)) +
+  scale_x_continuous(breaks = seq(0,600,20),expand = c(0.02,0.02)) +
+  scale_shape_manual(name = "Identification\n     satatus",
+                     values = c(21,24),
+                     labels=c("BLAST IDed","no ID")) +
+  xlab("Tamanho da ASV (pb)") +
+  ylab("Amostra") +
+  ggtitle(label = paste0("ECOMOL - ",prjct_rad, " - ",Sys.Date()),
+          subtitle = "Distribuição de tamanho e origem das ASVs encontradas por amostra\nconsiderando todas ASVs") +
+  theme_bw(base_size = 8) +
+  theme(legend.position = "right")+
+  theme(axis.text.x = element_text(angle = 45,hjust = 1)) +
+  guides(alpha="none") +
+  facet_grid(Primer ~ .,scales ='free_y', space ='free_y') 
+# +
+#   geom_hline(yintercept = c(21.5,22.5,23.5,24.5,25.5),size = 0.2)
+ASV_legth_by_Sample
+
+
+
+
+
+
+
+
+
+# Tamanho das ASVs por amostra e Read origin ---- 
+
+
+
+# ASV_legth_by_Sample <- curated_smp_abd_ID %>% 
+ASV_legth_by_Sample <- smp_abd_ID_Final %>% 
+  mutate(Sample=factor(Sample,levels = sample_levels)) %>% 
+  # mutate(`Read origin`=factor(`Read origin`,levels = c("merged", "R1", "R2","concat"))) %>% 
+  # filter(`Primer expected length` %in% c("in range")) %>%
+  # filter(!`Curated ID` %in% c(NA,"NA")) %>%
+# filter(Abundance >=1) %>%
+  ggplot(aes(y=Sample,
+             # x=`Size (pb)`,
+             x=`ASV Size (pb)`,
+             # colour = Primer,
+             fill = `BLASTn pseudo-score`,
+             col = `BLASTn pseudo-score`,
+             # shape = `Primer expected length`,
+             shape = is.na(`Curated ID`),
+             size =`Relative abundance on sample`, 
+             alpha = 0.05
+             )) +
+  # geom_vline(aes(xintercept = c(260)), size = 0.01, col="#C0C0C0")+
+  # geom_vline(aes(xintercept = c(20)), size = 0.01, col="#C0C0C0")+
+  geom_jitter(height = 0.3,
+              width = 0.3) +
+  # scale_color_manual(
+  #   labels = c("MiMammal-U","MiFish", "NeoFish", "COI-1", "COI-3","NeoFish/MiFish"),
+  #                    values = alpha(colour = colors6 ,alpha =  0.3)) +
+    # scale_color_viridis(discrete = TRUE,option = "viridis",alpha = 0.3) +
+    # scale_color_hue( c=100) +
+    # scale_color_manual("Origem da ASV",values =colors6[c(3,5,4)]) +          #origen
+                                        # scale_color_manual("Origem da ASV",values =viridis::inferno(100)) +          #origen
+                                         scale_fill_gradientn(colours = rev(viridis::plasma(256))) +
+                                         scale_color_gradientn(colours = rev(viridis::plasma(256))) +          #origen`
+    # scale_color_manual("Origem da ASV",values =colors4) +          #origen
+    # scale_color_manual("Primer",values =viridis::viridis(n = 9)[c(2,5,8)]) +
+    # scale_color_manual("Primer",values =viridis::turbo(n =15)[c(1,3,15)]) +
+  scale_size_continuous(name = "Abundância\n     relativa\nna amostra (%)",
+                        breaks = c(0,1,10,20,30,40,50,60,70,80,90,100),
+                        # scale_radius(range = c(1,20))
+                        ) +
+  # coord_fixed(ratio = 3) +
+  # scale_x_continuous(breaks = c(20,30,40,50,60,70,80,90,100,110,120,130,140,160,180,200,220,240,260,280,300,320,340),expand = c(0.02,0.02)) +
+  scale_x_continuous(breaks = seq(0,600,20),expand = c(0.02,0.02)) +
+  scale_shape_manual(name = "Identification\n     satatus",
+                     values = c(21,24),
+                     labels=c("BLAST IDed","no ID")) +
+  xlab("Tamanho da ASV (pb)") +
+  ylab("Amostra") +
+  ggtitle(label = "Ecomol - WWF_7-MiBird",
+  # ggtitle(label = paste0("Ecomol - ",prjct_rad," - 16/03/2022"),
+          # subtitle = "Distribuição de tamanho e origem das ASVs encontradas por amostra\nEXCLUINDO POSSÍVEIS BACTÉRIAS") +
+          # subtitle = "Distribuição de tamanho e origem das ASVs encontradas por amostra\nCONSIDERANDO POSSÍVEIS BACTÉRIAS") +
+          # subtitle = "Distribuição de tamanho e origem das ASVs encontradas por amostra\nConsiderando apenas ASVs no intervalo de tamanho esperado para o amplicon") +
+          # subtitle = "Distribuição de tamanho e origem das ASVs encontradas por amostra\nConsiderando apenas ASVs no intervalo de tamanho esperado para o amplicon e identificadas") +
+          subtitle = "Distribuição de tamanho e origem das ASVs encontradas por amostra\nconsiderando todas ASVs") +
+  theme_bw(base_size = 8) +
+  theme(legend.position = "right")+
+  theme(axis.text.x = element_text(angle = 45,hjust = 1)) +
+  guides(alpha="none") +
+  facet_grid(Project ~ .,scales ='free_y', space ='free_y') 
+# +
+#   geom_hline(yintercept = c(21.5,22.5,23.5,24.5,25.5),size = 0.2)
+ASV_legth_by_Sample
+
+
+
+# ggsave(file = paste0(figs_path,"/",prjct_rad,"-ASV_length_by_sample-NO_BAC.pdf",collapse = ""),
+# ggsave(file = paste0(figs_path,"/",prjct_rad,"-ASV_length_by_sample-ALL_ASVs_in_range.pdf",collapse = ""),
+ggsave(file = paste0(figs_path,"/",prjct_rad,"-ASV_length_by_sample-ALL_ASVs.pdf",collapse = ""),
+# ggsave(file = paste0(figs_path,"/",prjct_rad,"-ASV_length_by_sample-ALL-ASVs-IDs.pdf",collapse = ""),
+     plot = ASV_legth_by_Sample,
+     device = "pdf",
+     width = 40,
+     height = 50,
+     units = "cm",
+     dpi = 600)
+
+
+
+# ----
+
+
+# Tamanho das ASVs por amostra e preservação ---- 
+
+library(ggh4x)
+
+# ASV_legth_by_Smpl_Metadata 1 <- curated_smp_abd_ID %>% 
+ASV_legth_by_Smpl_Metadata 1 <- smp_abd_ID_Final %>% 
+  mutate(Sample=factor(Sample,levels = sample_levels)) %>% 
+  # mutate(Metadata 1 = factor(Metadata 1, levels = c("Teste"          "buffer"         "sílica"         "gustavo Romero" "Negativos")))
+  # mutate(`Read origin`=factor(`Read origin`,levels = c("merged", "R1", "R2","concat"))) %>% 
+  # filter(`Primer expected length` %in% c("in range")) %>%
+  # filter(!`Curated ID` %in% c(NA,"NA")) %>%
+  ggplot(aes(y=Sample,
+             x=`ASV Size (pb)`,
+             fill = `BLASTn pseudo-score`,
+             col = Metadata 1,
+             # shape = `Primer expected length`,
+             shape = is.na(`Curated ID`),
+             size =`Relative abundance on sample`, 
+             alpha = 0.05
+             )) +
+  geom_jitter(height = 0.2,
+              width = 0.4) +
+  # scale_color_manual(labels = c("MiMammal-U","MiFish", "NeoFish", "COI-1", "COI-3","NeoFish/MiFish"),
+  #                    values = alpha(colour = colors6 ,alpha =  0.3)) +
+  # scale_color_manual("Origem da ASV",values =viridis::inferno(100)) +          #origen
+    # scale_color_manual("Origem da ASV",values =colors6[c(3,5,4)]) +          #origen
+                                        scale_fill_gradientn(colours = rev(viridis::plasma(256))) +
+                                         scale_color_manual(values = rev(viridis::turbo(n=8))) +
+                                         # scale_linetype_manual(linesize=0.05)+
+    # scale_color_manual("Origem da ASV",values =colors4) +          #origen
+    # scale_color_manual("Primer",values =viridis::viridis(n = 9)[c(2,5,8)]) +
+    # scale_color_manual("Primer",values =viridis::turbo(n =15)[c(1,3,15)]) +
+  scale_size_continuous(name = "Abundância\n     relativa\nna amostra (%)",
+                        breaks = c(0,0.1,1,10,20,30,40,50,60,70,80,90,100),
+                        # scale_radius(range = c(1,20))
+                        ) +
+  # scale_x_continuous(breaks = seq(0,400,1),expand = c(0.02,0.02)) +
+  scale_x_continuous(breaks = seq(0,500,20),expand = c(0.02,0.02)) +
+  # scale_x_continuous(breaks = seq(0,600,20),expand = c(0.02,0.02)) +
+  scale_shape_manual(name = "Identification\n     satatus",
+                     values = c(21,4),
+                     labels=c("BLAST IDed","no ID")) +
+  xlab("Tamanho da ASV (pb)") +
+  ylab("Amostra") +
+  ggtitle(label = "Ecomol - WWF_7-MiBird",
+  # ggtitle(label = paste0("Ecomol - ",prjct_rad," - 16/03/2022"),
+          # subtitle = "Distribuição de tamanho e origem das ASVs encontradas por amostra\nEXCLUINDO POSSÍVEIS BACTÉRIAS") +
+          # subtitle = "Distribuição de tamanho e origem das ASVs encontradas por amostra\nCONSIDERANDO POSSÍVEIS BACTÉRIAS") +
+          # subtitle = "Distribuição de tamanho e origem das ASVs encontradas por amostra\nconsiderando apenas ASVs no intervalo de tamanho esperado para o amplicon") +
+          # subtitle = "Distribuição de tamanho e origem das ASVs encontradas por amostra\nconsiderando apenas ASVs no intervalo de tamanho esperado para o amplicon e identificadas") +
+          subtitle = "Distribuição de tamanho e origem das ASVs encontradas por amostra\nconsiderando todas ASVs") +
+  theme_bw(base_size = 8) +
+  theme(legend.position = "right")+
+  theme(axis.text.x = element_text(angle = 45,hjust = 1)) +
+  guides(alpha="none") 
+# +
+  # facet_grid2(vars(Metadata 1), scales = "free", independent = "x",space = "free_y")
+
+
+
+ASV_legth_by_Smpl_Metadata 1
+
+
+
+# ggsave(file = paste0(figs_path,"/",prjct_rad,"-ASV_length_by_sample-NO_BAC.pdf",collapse = ""),
+ggsave(file = paste0(figs_path,"/",prjct_rad,"-ASV_length_by_sample-ALL_ASVs.pdf",collapse = ""),
+# ggsave(file = paste0(figs_path,"/",prjct_rad,"-ASV_length_by_sample-ALL_ASVs_in_range.pdf",collapse = ""),
+# ggsave(file = pastSV_length_by_sample-ALL-ASVs-IDs_zoom.pdf",collapse = ""),
+# ggsave(file = paste0(figs_path,"/",prjct_rad,"-ASV_length_by_sample-ALL-ASVs-zoom.pdf",collapse = ""),
+     plot = ASV_legth_by_Smpl_Metadata 1,
+     device = "pdf",
+     width = 35,
+     height = 45,
+     units = "cm",
+     dpi = 600)
+
+
+
+
+# ASV abundance per species ----
+
+ASV_ID_by_Sample_BLASTn_bar <- smp_abd_ID_Final %>%
+# ASV_ID_by_Sample_BLASTn_bar <- curated_smp_abd_ID %>% 
+   # filter(`Primer` %in% c("R1","R2")) %>%                                      #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  # filter(Metadata 1 %in% c("sílica","buffer")) %>%                                      #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  filter(!`Final ID (BLASTn)` %in% c("NA","",NA)) %>% 
+  # unite(col = "Pres_prim", c(Primer,Metadata 1),remove = FALSE,sep = "_") %>% 
+  mutate(Sample=factor(Sample,levels = sample_levels)) %>% 
+  mutate(`Read origin`=factor(`Read origin`,levels = c("merged", "R1", "R2","concat"))) %>% 
+  ggplot(aes(y= Sample,
+             x =`Relative abundance on sample`,
+             group= Metadata.1,
+             fill= Metadata.1
+             # group=Pres_prim,
+             # fill=Pres_prim
+             # fill = `Curated ID`
+             # fill = `Genus (BLASTn)`
+             # fill = `Family (BLASTn)`
+               # , alpha = 0.3
+             )) +
+  # geom_bar(stat = "identity", position = position_dodge2(preserve = "single")) +
+  geom_bar(stat = "identity", position = "dodge") +
+  # scale_color_manual(    labels = c("MiMammal-U","MiFish", "NeoFish", "COI-1", "COI-3","NeoFish/MiFish"),values = alpha(colour = colors6 ,alpha =  0.3)) +
+  # scale_color_manual(    labels = c("MiMammal-U","MiFish", "NeoFish", "COI-1", "COI-3","NeoFish/MiFish"),values = alpha(colour = colors6 ,alpha =  0.3)) +
+    # viridis::scale_fill_viridis(discrete = TRUE,option = "turbo") +
+    # scale_color_hue( c=100) +
+    # scale_color_discrete(colors=rainbow(6)) +
+  # coord_fixed(ratio = 0.30) +
+  # coord_fixed(ratio = 0.50) +
+  xlab("Amostra") +
+  ylab("Identificação por BLASTn") +
+  ggtitle(label = "Ecomol - ASVs identificadas por BLASTn",
+          subtitle = "Todas ASVs únicas encontradas na análise e suas identificações por BLASTn") +
+  theme_bw(base_size = 8) +
+  theme(legend.position = "bottom")+
+  # geom_vline(xintercept = c(21.5,22.5,23.5,24.5,25.5),size = 0.2)+
+  theme(axis.text.x = element_text(angle = 45,hjust = 1))  +
+  facet_wrap2(facets = vars(`Read origin`),ncol = 4)
+
+ASV_ID_by_Sample_BLASTn_bar
+
+
+
+
+ggsave(file = paste0(figs_path,"/",prjct_rad,"-BARPLOT-curated_ID_by_sample.pdf",collapse = ""),
+     plot = ASV_ID_by_Sample_BLASTn_bar,
+     device = "pdf",
+     width = 14,
+     height = 20,
+     dpi = 600)
+
+# alfa div per sample ----
+
+
+riqueza_Sample_BLASTn_bar <- smp_abd_ID_Final %>%
+# riqueza_Sample_BLASTn_bar <- curated_smp_abd_ID %>%
+
+# riqueza_Sample_BLASTn_bar <- curated_smp_abd_ID_summary_ID %>% 
+  # filter(`Relative abundance on sample` >= 0.5) %>% 
+    # filter(`Class (BLASTn)` %in% c("Actinopteri")) %>% 
+  # filter(`ID Abundance on sample (%)` >= 0.5) %>% 
+  #   unite(col = "Pres_prim", c(Primer,Metadata 1),remove = FALSE,sep = "_") %>% 
+  # mutate(Pres_prim = factor(Pres_prim, levels = c(
+  #   "COIr1_buffer","COIr1_sílica","COIr2_buffer","COIr2_sílica","COIr2_gustavo Romero",
+  #   "p12SV5_Teste","p12SV5_Negativos","COIr1_Negativos","COIr2_Negativos"
+  #   ))) %>% 
+  mutate(Sample=factor(Sample,levels = sample_levels)) %>% 
+  mutate(Identification=factor(Identification)) %>% 
+  # mutate(`Read origin`=factor(`Read origin`,levels = c("merged", "R1", "R2","concat"))) %>% 
+  ggplot(aes(x = Sample,
+             # y = `Final Curated ID`,
+             fill = `Family (BLASTn)`)) +
+             # fill = Pres_prim)) +
+             # fill = Identification,
+             # group = Identification)) +
+  geom_bar(stat = "count", position = "stack",width=0.5) +
+  viridis::scale_fill_viridis(discrete = TRUE,option = "turbo") + 
+  guides(col = guide_legend(nrow = 6)) +
+  xlab("Amostra") +
+  ylab("Riqueza de espécies") +
+  ggtitle(label = "Ecomol - WWF_7-MiBird",
+          subtitle = "Riqueza de identificações únicas por amostra com abd >= 0.5%: apenas Actinopteri") +
+  theme_bw(base_size = 12) +
+  theme(legend.position = "bottom")+
+  # geom_vline(xintercept = c(21.5,22.5,23.5,24.5,25.5),size = 0.2)+
+  theme(axis.text.x = element_text(angle = 45,hjust = 1)) +
+  # facet_wrap(~`Read origin`,ncol = 4) 
+  # facet_wrap(~Primer,ncol = 4) 
+  facet_grid(~Metadata.1,space = "free",scales = "free")
+   # facet_grid2(rows = vars(Primer), 
+   #             cols = vars(Metadata 1),
+   #             space = "fixed",
+   #             scales = "free_x",
+   #             # axes = "all"
+   #             # ,independent ='x'
+   #             )
+# riqueza_Sample_BLASTn_bar + 
+#   guides(col = guide_legend(nrow = 5))
+riqueza_Sample_BLASTn_bar
+
+
+ggsave(file = paste0(figs_path,"/",prjct_rad,"-BARPLOT-riqueza_maior_que_05pct-Actinopteri.pdf",collapse = ""),
+# ggsave(file = paste0("/home/noreh/prjcts/ecomol","/",prjct_rad,"-BARPLOT-riqueza.pdf",collapse = ""),
+     plot = riqueza_Sample_BLASTn_bar,
+     device = "pdf",
+     width = 32,
+     height = 12,
+     dpi = 600)
+```
+
+
+
+
+ 
+
+
+# NMDSs
+
+
+```r
+# Transformar planilha final de resultados numa planilha de IDs X amostras ----
+
+
+curated_smp_abd_ID %>% colnames()
+
+# converter a planilha final de resultados modificando filtros ----
+  
+FINAL_tbl_IDs <-
+      curated_smp_abd_ID %>%
+      # mif_mib_12v5_TBL_FINAL_deposit %>%
+  filter(`Clean relative abd. on sample` != 0) %>% 
+  filter(`Contamination status` %in% c("True detection")) %>% 
+  
+  filter(Type %in% c("Sample")) %>% 
+  
+  filter(!is.na(Metadata.2)) %>% 
+  # unite(col = "Sample name", Sample, Metadata.1, remove = FALSE, sep = " ", na.rm = TRUE) %>%
+  # select(-c("Sample")) %>%
+  # rename("Sample" = "Sample name") %>%
+    # mutate("Num. of replicates in Sampling Unit by marker" = as.character(`Num. of replicates in Sampling Unit by marker`)) %>% 
+    # unite(col = "OTU_ID", `Curated ID`,OTU,
+    #       remove = F,sep = "-") %>% 
+  ###________________________ filtros diversos de entrada_______________________
+  # filter(`Order (BLASTn)` %in% c("Ephemeroptera", "Plecoptera", "Trichoptera ")) %>% #restam muito poucas IDs
+  # filter(`Phylum (BLASTn)` %in% c("Chordata")) %>%
+  # filter(`Phylum (BLASTn)` %in% c("Arthropoda")) %>%
+  # filter(`Class (BLASTn)` %in% c("Mammalia")) %>%
+  # filter(`BLASTn pseudo-score` >= 90) %>%
+  # filter(`1_indentity` >= 90) %>%
+  ###____________________remover colunas que não serão utilizadas_______________
+
+group_by(Sample) %>% 
+  
+mutate("Total clean sample abd." = sum(`ASV absolute abundance`)) %>% 
+mutate("Clean relative abd. on sample" = `ASV absolute abundance`/`Total clean sample abd.`) %>% 
+  ungroup() %>% 
+
+
+  dplyr::select(-c(      
+    # "Unique ID",      # este é nosso identificador único  de cada ponto amostral campo
+    "Unique_File_name", # esse é o identificador unico de cada subamostra de um mesmo ponto
+    # "Sample",
+    # "Primer name",
+    # "Longitude",
+    # "Latitude",
+    # "Date",
+    "Researcher",
+    # "Estado",
+    # "Status",
+    # "Environment (material)",
+    # "Marker",
+    "Identification Max. taxonomy",
+    # "Clean relative abd. on Sampling Unit by marker",
+    # "Num. of replicates in Sampling Unit by marker",
+    "Total clean sample abd. by marker",
+    "Total clean sample abd.",
+  ###____________________podemos soma a abd por qqr classe dessas_______________
+  ###____________________basta comentar aqui e substituir em     _______________
+  ###____________________      names_from = `NOME DA COLUNA`,    _______________
+    "OTU",
+    "Superkingdom (BLASTn)",
+    "Kingdom (BLASTn)",
+    "Phylum (BLASTn)",
+    "Subphylum (BLASTn)",
+    "Class (BLASTn)",
+    "Subclass (BLASTn)",
+    "Order (BLASTn)",
+    "Suborder (BLASTn)",
+    "Family (BLASTn)",
+    "Subfamily (BLASTn)",
+    "Genus (BLASTn)",
+    "Final ID (BLASTn)",
+  # "OTU_ID",
+    # "BLASTn pseudo-score",
+    # "Curated ID",                            # estamos usando essa
+  ###____________________      outros campos que não precisamos    _______________
+                           # "Comentário Curador",
+    # "Curador",
+    # "Clean relative abd. on sample", 
+    "Relative abundance on sample",         
+    "Total clean sample abd. by marker",             # abundancia total da amostra
+    "ASV absolute abundance",    #abundancia absoluta
+    "ASV Size (pb)",
+    "Primer expected length",
+    "Type",
+  ###____________________      infos das IDs do BLASTn    ______________________
+    "1_subject header","1_subject","1_indentity","1_qcovhsp","1_length","1_mismatches","1_gaps",
+    "1_query start","1_query end","1_subject start","1_subject end","1_e-value","1_bitscore", "1_staxid",
+    "2_subject header","2_subject","2_indentity","2_qcovhsp","2_length","2_mismatches","2_gaps",
+    "2_query start","2_query end","2_subject start","2_subject end","2_e-value","2_bitscore", "2_staxid",
+    "3_subject header","3_subject","3_indentity","3_qcovhsp","3_length","3_mismatches","3_gaps",
+    "3_query start","3_query end","3_subject start","3_subject end","3_e-value","3_bitscore", "3_staxid",
+  ###____________________      Sequencia da ASV    _____________________________
+    "ASV (Sequence)", "ASV header",
+  
+  ###________________ outras infos tecnicas _________________
+  # "Project",
+  # "Sample",
+  "Read origin",
+  "Relative abundance to all samples",
+  "Sample total abundance",
+  # "Metadata.1",
+  # "Metadata.2",
+  # "Metadata.3",
+  # "Metadata.4",
+  # "Metadata.5",
+  # "Metadata.6",
+  "obs", 
+  "Possible Metazoa",
+  "BLAST ID", 
+  "blast ID Origin",
+  "ID status", 
+    "Contamination status", 
+    # "max_tax",
+    "Contamination control",
+    "PCR control",
+    "Filt. control",
+    "Prop. to PCR control",
+    "Prop. to Ext control",
+    "Prop. to Filt control"
+    )) %>% 
+  pivot_wider(                                #pivotando as IDs de linhas pra colunas
+    id_cols = c(
+                "Sample",
+                "Metadata.1", 
+                "Metadata.2", 
+                "Metadata.3", 
+                "Metadata.4", 
+                "Metadata.5", 
+                "Metadata.6",
+                # "Longitude",
+                # "Latitude",
+                # "Data da Coleta",
+                # "Local",
+                # "Tratamento",
+                # "Estágio",
+                "Project"
+                # "Marker",
+                # "target_gene",
+                # "ID status"
+                ),
+    values_from ="Clean relative abd. on sample",            #utilizando abundancias Identificadas
+    # values_from ="ASV rel. abd. in Sampling Unit by marker",
+    values_fn = sum_uniq,
+    names_from = Identification,
+    names_sort = TRUE,
+    names_prefix = "ID_"
+    ) %>% 
+  relocate(c("Sample",
+             "Metadata.1",
+  "Metadata.2",
+  "Metadata.3",
+  "Metadata.4",
+  "Metadata.5",
+  "Metadata.6",
+             # "Data da Coleta",
+             # "Local",
+             # "Tratamento",
+             # "Estágio",
+             # "Longitude",
+             # "Latitude",
+             "Project",
+             starts_with("ID_")
+             )) %>%  
+    mutate(across(starts_with("ID_") , replace_na, replace = 0)) 
+
+# %>% 
+  # filter(rowSums(across(starts_with("ID_")))!=0)
+
+
+
+FINAL_tbl_IDs %>% 
+  filter(rowSums(across(starts_with("ID_")))==0) %>% 
+  # pull(Project)
+  pull(Sample)
+  
+
+colnames(FINAL_tbl_IDs)
+
+
+# if ( all(unique(FINAL_tbl_IDs$Estado) ==  c("São Paulo", "Minas Gerais", "Rio de Janeiro")) |
+#      all(unique(FINAL_tbl_IDs$Estado) ==  c("SP", "MG", "RJ"))){
+#   
+#   estado <- "Todos"
+#   }else{
+#     estado <-   unique(FINAL_tbl_IDs$Estado)
+#     }
+#   
+#   estado
+#  
+# if ( all(unique(FINAL_tbl_IDs$`Environment (material)`) ==  c("Water", "Soil"))){
+#   
+#   EnvMat <- ""
+#   }else if (unique(FINAL_tbl_IDs$`Environment (material)`) ==  c("Water")){
+#     EnvMat <- "Agua"
+#     }else if (unique(FINAL_tbl_IDs$`Environment (material)`) ==  c("Soil")){
+#       EnvMat <- "Solo"
+#       }
+#   
+#   EnvMat
+  
+
+# Verificar a soma das colunas, só é esperado resultado = 1 se não tiver filtros e usar a ABD ñ clean! 
+# FINAL_tbl_IDs
+
+# 
+FINAL_tbl_IDs %>%
+  select(starts_with(match = "ID")) %>%
+  rowSums() %>% plot()
+# 
+# # 
+FINAL_tbl_IDs %>%
+    select(starts_with(match = "ID")) %>%
+  colSums() %>% plot()
+# # 
+# # # 
+# FINAL_tbl_IDs %>%
+#     select(starts_with(match = "ID")) %>%
+#   colSums() %>% sort(decreasing = F)
+# # 
+#  FINAL_tbl_IDs %>%
+#   mutate("SOMA" = rowSums(select(.,starts_with(match = "ID")) )) %>%
+#   relocate("SOMA") %>%
+#   View()
+# 
+# 
+# 
+# 
+# tabela %>% 
+#   group_by("Classe") %>% 
+#   summarize("Num. ASVs" =  length(unique("ASV")))
+
+#NMDS ----
+
+
+#refs
+# https://rpubs.com/CPEL/NMDS
+# 
+#
+
+
+
+
+# 
+# FINAL_tbl_IDs$Marker %>% table()
+
+#1- prepare data for entry in vegan ----
+# colnames(FINAL_tbl_IDs)
+
+all_IDs_NMDS_tbl <- FINAL_tbl_IDs %>% 
+  mutate("Sample number" = 0) %>%
+  relocate(
+    `Sample number`)
+#2- associate sample numbers to sample names ----
+for (sample in 1:nrow(all_IDs_NMDS_tbl)) {
+  
+  all_IDs_NMDS_tbl$`Sample number`[sample] <- sample
+  
+}
+
+
+# colnames(all_IDs_NMDS_tbl) 
+# colnames(all_IDs_NMDS_tbl) %>% head(12)
+
+
+#ordenar df usada no NMDS ----
+    all_IDs_NMDS_df <- all_IDs_NMDS_tbl %>% 
+      select(base::sort(colnames(.))) %>%
+      relocate(c("Sample number","Sample",
+                 "Metadata.1", 
+                "Metadata.2", 
+                "Metadata.3", 
+                "Metadata.4", 
+                "Metadata.5", 
+                "Metadata.6",
+                 "Project"
+                 )) %>%
+      as.data.frame() 
+
+#4- name rows as Sample numbers and remove column ----
+row.names(all_IDs_NMDS_df) <- all_IDs_NMDS_df$`Sample number`
+
+all_IDs_NMDS_df %>% dim()
+
+
+colnames(all_IDs_NMDS_df)
+# correct species names to avoid problems in ploting
+
+colnames(all_IDs_NMDS_df)[10:ncol(all_IDs_NMDS_df)] <- colnames(all_IDs_NMDS_df)[10:ncol(all_IDs_NMDS_df)] %>%
+  str_replace_all(pattern = " ",replacement = "_") %>% 
+  str_replace_all(pattern = "\\.",replacement = "") %>% 
+  str_replace_all(pattern = "\\(",replacement = "") %>% 
+  str_replace_all(pattern = "\\)",replacement = "")
+
+        
+all_ps_vegan_ord_meta <- metaMDS(veg = all_IDs_NMDS_df[,10:ncol(all_IDs_NMDS_df)],
+                                 comm = all_IDs_NMDS_df[,10:ncol(all_IDs_NMDS_df)],
+                                 # distance = "bray"
+                                 distance = "jaccard"
+                                 )
+
+plot(all_ps_vegan_ord_meta)
+
+dim(all_IDs_NMDS_df)
+
+  #retirado daqui!!!!!!!!!!!!!!!!!!!!       https://www.rpubs.com/RGrieger/545184
+
+# meta.envfit <- envfit(all_ps_vegan_ord_meta, all_IDs_NMDS_df[,c("Estado", "Status")], permutations = 999) # this fits environmental vectors
+# meta.envfit <- envfit(all_ps_vegan_ord_meta, all_IDs_NMDS_df[,c("Tratamento", "Estágio")], permutations = 999) # this fits environmental vectors
+meta.envfit <- envfit(all_ps_vegan_ord_meta, 
+                      all_IDs_NMDS_df[,c("Metadata.2", "Metadata.3","Metadata.5")], 
+                      permutations = 999,
+                      na.rm=TRUE) # this fits environmental vectors
+
+
+
+# esse é o passo que mais demora
+meta.spp.fit <- envfit(all_ps_vegan_ord_meta, all_IDs_NMDS_df[,10:ncol(all_IDs_NMDS_df)], permutations = 999) # this fits species vectors
+
+
+
+
+## envfit in parallel??----
+
+# 
+#   future::plan(future::multisession(),      workers = 10)
+#   
+# meta.spp.fit2 <- furrr::future_map_dfc(.x = all_IDs_NMDS_df[,11:15],
+#                                        .f = vegan::envfit,
+#                                        ord = all_ps_vegan_ord_meta, 
+#                                        permutations = 999,
+#                                        .options = furrr::furrr_options(seed = TRUE))
+#   all_ps_vegan_ord_meta$species
+
+
+## ----
+
+
+
+
+
+
+site.scrs <- as.data.frame(scores(all_ps_vegan_ord_meta, display = "sites")) %>% 
+  mutate("Sample number" = as.double(row.names(.))) %>% 
+  left_join(y = all_IDs_NMDS_df[,c("Sample",
+                                   "Sample number",
+                                   # "Data da Coleta",
+                                   # "Local",
+                                   # "Tratamento",
+                                   # "Estágio",
+                                   # "Latitude", 
+                                   # "Longitude"
+                                   "Metadata.2",
+                                   "Metadata.3",
+                                   "Metadata.4",
+                                   "Metadata.5"
+                                   )],
+            by = "Sample number") 
+# %>% 
+#   mutate("Unique ID" = str_replace_all(string = `Unique ID`,
+#                                        pattern = "SAMPLE_[0-9]++-",replacement = ""))
+
+
+
+# determinar centroides ----
+scrs <-
+  scores(all_ps_vegan_ord_meta, display = "sites")
+
+cent <-
+  aggregate(scrs~`Metadata.2`,data = site.scrs, FUN = "mean")
+# %>% 
+#   mutate(Status =  factor(Status, levels = c("Sem intervenção", "Com intervenção","Unidade de Conservação")))
+
+
+#get species pvalues ----
+sps_pvals <- tibble("IDs" = names(meta.spp.fit$vectors$pvals),
+                    "p-value" = meta.spp.fit$vectors$pvals)
+
+
+spp.scrs <- as.data.frame(scores(meta.spp.fit, display = "vectors")) %>% 
+  mutate("IDs" = rownames(.)) %>% 
+  left_join(y = sps_pvals, by = "IDs")
+
+sig.spp.scrs <- spp.scrs %>% 
+  filter(`p-value` <=0.05)                   # selecionar para mostrar apenas sps com pval significativo
+
+
+
+
+#calculate ellipses ----
+NMDS = data.frame("MDS1" = all_ps_vegan_ord_meta$points[,1], 
+                  "MDS2" = all_ps_vegan_ord_meta$points[,2],
+                  "Metadata.2"= as.factor(all_IDs_NMDS_df$Metadata.2))
+                  # "StatEstado"= as.factor(all_IDs_NMDS_df$StatEstado))
+
+NMDS.mean=aggregate(NMDS[,1:2],list(group=NMDS$Metadata.2),"mean")
+# NMDS.mean=aggregate(NMDS[,1:2],list(group=NMDS$StatEstado),"mean")
+
+
+
+
+
+# funçaõ do vegan de calcular ellipses
+veganCovEllipse<-function (cov, center = c(0, 0), scale = 1, npoints = 100) 
+  {
+    theta <- (0:npoints) * 2 * pi/npoints
+    Circle <- cbind(cos(theta), sin(theta))
+    t(center + scale * t(Circle %*% chol(cov)))
+  }
+
+# dev.off()
+# dev.off()
+plot(all_ps_vegan_ord_meta)
+
+ord <- ordiellipse(ord = all_ps_vegan_ord_meta, 
+                 groups = all_IDs_NMDS_df$Metadata.2,
+                 # groups = all_IDs_NMDS_df$StatEstado,
+                 display = "sites",
+                 kind = "ehull", conf = 0.95, label = T)
+
+
+# fit <- envfit(all_ps_vegan_ord_meta~Al,varechem,perm=999,display="lc")
+
+# vegan::ordiarrows(ord = all_ps_vegan_ord_meta,
+#                   groups = 
+#                     )
+
+df_ell <- data.frame()
+
+for(g in levels(NMDS$Metadata.2)){
+# for(g in levels(NMDS$StatEstado)){
+  df_ell <- rbind(df_ell, cbind(as.data.frame(with(NMDS[NMDS$Metadata.2==g,],
+  # df_ell <- rbind(df_ell, cbind(as.data.frame(with(NMDS[NMDS$StatEstado==g,],
+                  veganCovEllipse(ord[[g]]$cov,
+                                  ord[[g]]$center,
+                                  ord[[g]]$scale))),
+  Metadata.2=g))
+                                # StatEstado=g))
+}
+
+df_ell <- df_ell 
+# %>% 
+#   mutate(Status =  factor(Status, levels = c("Unidade de Conservação", "Com intervenção","Sem intervenção")))
+
+
+
+# fazer o grafico ----
+
+# library(ggalt)
+# 
+# # 
+# colorblindcheck::palette_check(c("#fcca03","#6b0000","#02cc37"), plot = TRUE)
+# colorblindcheck::palette_check(c("#D7E405","#9C0000","#17B102"), plot = TRUE)
+
+site.scrs <- site.scrs 
+# %>% 
+#   mutate(Status =  factor(Status, levels = c("Unidade de Conservação", "Com intervenção","Sem intervenção")))
+
+
+  paste0(unique(all_IDs_NMDS_df$Estágio),collapse = " / ")
+
+manual_NMDS_plot <-
+  ggplot(data = site.scrs, 
+         aes(x=NMDS1, 
+             y=NMDS2)) +
+  #elipses ####
+  ggforce::geom_mark_ellipse(inherit.aes = FALSE,
+                             data = df_ell,
+                             aes(x = NMDS1,
+                                 y = NMDS2,
+                                 group=Metadata.2,
+                                 label=Metadata.2,
+                                 col =Metadata.2,
+                                 fill =Metadata.2
+                                 ),
+                             alpha=0.15,
+                             # n = 200, 
+                             linetype=2,
+                             expand = 0,
+                             label.fontsize = 18,
+                             con.cap = 0.1
+                             ) +
+  #hulls #########
+  # ggforce::geom_mark_hull(aes(fill=Metadata.2),
+  #                         concavity = 5,
+  #                         expand=0,
+  #                         radius=0,
+  #                         linetype=0,
+  #                         alpha=0.15
+  #                         )+
+  #vetores das IDs
+  geom_segment(data = sig.spp.scrs, aes(x = 0,
+                                        xend=NMDS1,
+                                        y=0,
+                                        yend=NMDS2),
+               arrow = arrow(length = unit(0.1, "cm")),
+               colour = "grey10",
+               alpha=0.1,
+               lwd=0.3) + #add vector arrows of significant species
+  # #nomes das IDs
+  ggrepel::geom_text_repel(data = sig.spp.scrs,
+                           aes(x=NMDS1, y=NMDS2, label = IDs),
+                           size=2,
+                           alpha= 0.75,
+                           # cex = 5,
+                           direction = "both",
+                           segment.size = 0.25,
+                           segment.alpha=0.1,
+                           max.overlaps = 100) +
+  #pontos amostrais
+  geom_point(aes(x=NMDS1, 
+                 y=NMDS2, 
+                 fill = Metadata.2,
+                 # label = `Unique ID`,
+                 # alpha = 0.75,
+                 
+                 group = Metadata.2,
+                 shape = as.character(Metadata.5)), 
+             stroke = 0.5,
+             alpha=0.75,
+             col="#656565",
+             size = 5)+ 
+  #nomes dos pontos amostrais
+  geom_text(aes(label = `Sample`),
+            hjust=0.5, 
+            vjust=2.75, 
+            size=2) +
+  #centroides ----
+  geom_point(data = cent,
+             aes(x=NMDS1, 
+                 y=NMDS2, 
+               # colour = Metadata.2,
+               fill = Metadata.2
+               ),
+               size= 8,
+               colour="#222222",
+               alpha=0.75,
+               shape = 23
+           )+
+  coord_fixed()+
+  # scale_colour_manual(values = c("#fcca03","#6b0000","#02cc37"))+
+  # scale_colour_manual(values = c("#fcca03","#6b0000","#02cc37"))+
+  scale_fill_manual(values = viridis::turbo(n = 8))+
+  scale_colour_manual(values = viridis::turbo(n = 8))+
+  # scale_shape_manual() +
+  # Elipses ###################################################################
+  # elipse calculada usando função do vegan, bem menor
+  # geom_path(data=df_ell, aes(x=NMDS1, y=NMDS2,colour=Metadata.2), size=0.5, linetype=2) +
+  # ADD ggforce's ellipses
+              # ggforce::geom_mark_ellipse(inherit.aes = FALSE,
+              #                            data = df_ell,
+              #                            aes(x = NMDS1,y = NMDS2,
+              #                                group=Metadata.2,
+              #                                label=Metadata.2,
+              #                                col =Metadata.2,
+              #                                fill =Metadata.2
+              #                            ),
+              #                            alpha=0.025,
+              #                            n = 200, linetype=2,
+              #                            expand = 0,
+              #                            label.fontsize = 18,
+              #                            label.colour = "#919191",
+              #                            con.cap = 0.1
+                                  # ) +
+# ggplot2::geom_polygon(data = df_ell,inherit.aes = F,
+#                       aes(x=NMDS1,
+#                           y=NMDS2,
+#                           group  = Metadata.2,
+#                                              col =Metadata.2),linetype=2)+
+  # scale_fill_manual(values = c("#fcca03","#6b0000","#02cc37"))+
+                    # )+
+  theme_light()+ 
+  # labs(colour = "Intervenção", 
+  #      shape = "Local") + 
+  theme(legend.position = "right", 
+        legend.text = element_text(size = 12), 
+        legend.title = element_text(size = 12), 
+        axis.text = element_text(size = 10)) +
+  # notação do valor do stress do NMDS
+  # annotate(geom = "text",
+  #          x=c(-0.25),
+  #          y=c(-0.25),
+  #          label=c(paste0("Stress: ",format(round(all_ps_vegan_ord_meta$stress,4)))),
+  #          size=8,col="#919191") +
+  labs(title  = paste0(prjct_rad, " - NMDS das identificações por BLASTn"),
+          subtitle = paste0("\nConsiderando ",
+                            # "%ID >= 90 e %Abd. >= 0.005,", 
+                            " todas identificações",
+                            "\n","Stress: ",format(round(all_ps_vegan_ord_meta$stress,4)))) +
+  theme(plot.title = element_text(size = 30)) +
+  theme(plot.subtitle = element_text(size = 26)) +
+  theme(legend.title = element_text(size = 16)) +
+  theme(legend.text =  element_text(size = 12)) +
+  theme(axis.title = element_text(size = 24)) +
+  theme(legend.position = "bottom") 
+  
+manual_NMDS_plot
+
+
+
+# ggsave(file = paste0(figs_path,"/COI/",prjct_rad,"-",Sys.Date(),"-NMDS_manual-COI-Solo-all_CleanAbd-85-SP2.pdf",collapse = ""),
+ggsave(file = paste0(figs_path,"/","NMDS_manual-all_markers-all_CleanAbd-90-",prjct_rad,"-",Sys.Date(),".pdf",collapse = ""),
+     plot = manual_NMDS_plot,
+     device = "pdf",
+     units = "cm",
+     width = 80,
+     height = 50,
+     dpi = 300)
+
+
+
+
+#Boxplot distance to centroids ----
+
+
+dist <- vegdist(all_IDs_NMDS_df[,10:ncol(all_IDs_NMDS_df)],method = "jaccard")
+
+all_IDs_betadis <- betadisper(dist,all_IDs_NMDS_df$`Estágio`)
+
+boxplot(all_IDs_betadis)
+
+all_IDs_betadis$vectors
+all_IDs_betadis$distances
+
+btdspr_tbl <- tibble("distances" = all_IDs_betadis$distances,
+       "group" = all_IDs_betadis$group)
+
+
+btdspr_plot <- btdspr_tbl %>% 
+  mutate(group =  factor(group, levels = c("Unidade de Conservação", "Com intervenção","Sem intervenção"))) %>% 
+  ggplot(aes(x=group, 
+           fill=group, 
+           col=group, 
+           y=distances)) + 
+  geom_boxplot(alpha=0.75) +
+  geom_jitter(height = 0,
+              width = 0.3) +
+  geom_signif(comparisons = list(c("Sem intervenção", "Unidade de Conservação"),
+                                 c("Com intervenção","Unidade de Conservação"),
+                                 c("Com intervenção", "Sem intervenção")), 
+              map_signif_level=TRUE,
+              col="#111111") +
+  theme_bw() +
+  scale_fill_manual(values = c("#09B900",
+                                 "#9AEC00",#amarelo  #verde claro
+                                  "#964C1A"#Vermelho #marrom
+                                  ))+
+  scale_colour_manual(values = c("#09B900",
+                                 "#9AEC00",#amarelo  #verde claro
+                                  "#964C1A"#Vermelho #marrom
+                                  )) +
+  labs(title = paste0(paste0("" ,estado)," - Amostras de ",
+                      paste0(unique(all_IDs_NMDS_df$`Environment (material)`),
+                                                                  collapse = " & "))) +
+  ylab(label = "Distância dos centroides") +
+  xlab(label = "Status de conservação") +
+  theme(legend.position = "bottom") +
+  guides(color=guide_legend("Status de conservação"),
+         fill=guide_legend("Status de conservação"))
+  
+  
+  
+
+btdspr_plot
+
+ggsave(file = paste0(figs_path,"/relat/05mai23/","dist_centroids-all_markers-Solo-all_CleanAbd-90-",estado,"-",EnvMat,"-",prjct_rad,"-",Sys.Date(),".pdf",collapse = ""),
+     plot = btdspr_plot,
+     device = "pdf",
+     width = 20,units = "cm",
+     height = 14,
+     dpi = 300)
+
+
+
+
+
+
+
+
+
+#Betapart
+
+
+#aqnalises brejao
+# library(betapart)
+
+
+unique(all_IDs_NMDS_df$Estado)
+unique(all_IDs_NMDS_df$`Environment (material)`)
+
+# all_IDs_NMDS_df_presence <- all_IDs_NMDS_df[,10:ncol(all_IDs_NMDS_df)]
+all_IDs_NMDS_df_presence <- 1*(all_IDs_NMDS_df[,10:ncol(all_IDs_NMDS_df)] > 0)
+
+
+
+
+all_NMDS_pres_CI <- all_IDs_NMDS_df_presence[all_IDs_NMDS_df$Status == "Com intervenção",] 
+all_NMDS_pres_SI <- all_IDs_NMDS_df_presence[all_IDs_NMDS_df$Status == "Sem intervenção",] 
+all_NMDS_pres_UC <- all_IDs_NMDS_df_presence[all_IDs_NMDS_df$Status == "Unidade de Conservação",] 
+
+
+
+
+beta.meta_CI <- beta.sample(all_NMDS_pres_CI, index.family="sor",sites=10,samples=100)
+beta.meta_SI <- beta.sample(all_NMDS_pres_SI, index.family="sor",sites=10,samples=100)
+beta.meta_UC <- beta.sample(all_NMDS_pres_UC, index.family="sor",sites=10,samples=100)
+
+
+
+boxplot((beta.meta_SI$sampled.values$beta.SIM ), (beta.meta_CI$sampled.values$beta.SIM), (beta.meta_UC$sampled.values$beta.SIM ),
+        (beta.meta_SI$sampled.values$beta.SOR ), (beta.meta_CI$sampled.values$beta.SOR), (beta.meta_UC$sampled.values$beta.SOR ),
+        (beta.meta_SI$sampled.values$beta.SNE ), (beta.meta_CI$sampled.values$beta.SNE), (beta.meta_UC$sampled.values$beta.SNE ), 
+        ylim=c(0,1), names =c("SI SIM","CI SIM","UC SIM",
+                              "SI SOR","CI SOR","UC SOR",
+                              "SI SNE","CI SNE","UC SNE"))
+
+
+
+
+
+SI_tbl <- tibble("SIM" = beta.meta_SI$sampled.values$beta.SIM,
+                 "SOR" = beta.meta_SI$sampled.values$beta.SOR,
+                 "SNE" = beta.meta_SI$sampled.values$beta.SNE,
+                 "Status" = "SI")
+
+
+
+CI_tbl <- tibble("SIM" = beta.meta_CI$sampled.values$beta.SIM,
+                 "SOR" = beta.meta_CI$sampled.values$beta.SOR,
+                 "SNE" = beta.meta_CI$sampled.values$beta.SNE,
+                 "Status" = "CI")
+
+
+
+UC_tbl <- tibble("SIM" = beta.meta_UC$sampled.values$beta.SIM,
+                 "SOR" = beta.meta_UC$sampled.values$beta.SOR,
+                 "SNE" = beta.meta_UC$sampled.values$beta.SNE,
+                 "Status" = "UC")
+
+
+
+beta_res_all <- bind_rows(SI_tbl, CI_tbl, UC_tbl)
+
+
+beta_box <- beta_res_all %>% 
+  mutate(Status = factor(Status, levels = c("UC","SI","CI"))) %>% 
+  pivot_longer(cols = c("SIM","SOR","SNE"),names_to = "index",values_to = "Values") %>% 
+  mutate(index = factor(index, levels = c("SOR","SIM","SNE"))) %>% 
+  ggplot(aes(y=Values,
+             x=Status))+
+  geom_boxplot(aes(fill=Status),
+               col="#111111")+
+  geom_jitter(aes(col=Status),
+               # col="#111111",
+              alpha=0.5,
+              height = 0,
+              width = 0.4,
+              size=1) +
+  geom_signif(comparisons = list(c("SI", "UC"),
+                                 c("CI","UC"),
+                                 c("CI", "SI")), 
+              map_signif_level=TRUE,
+              col="#111111",
+              y_position = c(0.55,0.45,0.35),
+              test = "wilcox.test",
+              # map_signif_level = c(F,F,F)
+              )+
+  theme_bw() +
+  scale_colour_manual(values = c("#09B900",
+                                 "#9AEC00",#amarelo  #verde claro
+                                  "#964C1A"#Vermelho #marrom
+                                  )) +
+  scale_fill_manual(values = c("#09B900",
+                                 "#9AEC00",#amarelo  #verde claro
+                                  "#964C1A"#Vermelho #marrom
+                                  )) +
+  facet_grid(cols = vars(index),
+             scales="free_y",
+             space = "free_y")+
+  labs(title = paste0(estado," - ",EnvMat)) +
+  ylab(label = "Beta diversidade taxonômica par a par") +
+  xlab(label = "Status de conservação")
+  
+
+
+
+
+beta_box
+
+
+ggsave(file = paste0(figs_path,"/relat/05mai23/","beta_part_box_CleanAbd_00001-ID90-",estado,"-",EnvMat,"-",prjct_rad,"-",Sys.Date(),".pdf",collapse = ""),
+     plot = beta_box,
+     device = "pdf",
+     width = 20,units = "cm",
+     height = 10,
+     dpi = 300)
+
+
+# diagrama de venn ----
+install.packages("venneuler")     # Install & load venneuler package
+library("venneuler")
+
+plot(venneuler(c("A" = 10,          # Draw pairwise venn diagram
+                 "B" = 25,
+                 "A&B" = 4)))
+
+
+
+
+install.packages("venn")
+library("venn")
+
+
+set.seed(12345)
+
+x <- as.data.frame(matrix(sample(0:1, 150, replace = TRUE), ncol = 5))
+
+venn(x, ilabels = "counts")
+
+
+plot(venneuler( c(
+  
+  "Unidade de Conservação"                 = 100,
+  "Com intervenção"                        = 15,
+  "Sem intervenção"                        = 31,
+  "Unidade de Conservação&Com intervenção" = 5,
+  "Unidade de Conservação&Sem intervenção" = 9,
+  "Com intervenção&Sem intervenção"        = 10
+  ), shape = "ellipse"))
+
+
+# https://eulerr.co/
+
+
+#09B900,#9AEC00,#964C1A
+
+
+
+
+
+
+
+install.packages("VennDiagram")
+
+library(VennDiagram)
+
+
+venn.diagram(list(B = 1:1800, A = 1571:2020),fill = c("red", "green"),
+  alpha = c(0.5, 0.5), cex = 2,cat.fontface = 4,lty =2, fontfamily =3, 
+   filename = "trial2.emf");
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<br><br>
+
+### Diiversity
+
+All samples together. Lines are species and blocks are colored by genus.
+
+
+```r
+curated_smp_abd_ID %>% colnames()
+
+
+##
+phyloseq::phyloseq(otu_table(),
+                   sample_data(samdf),
+                   tax_table(),
+                   phy_tree() )
+
+
+mergers_seqtab.nochim %>% class()
+samdf %>% class()
+mergers_taxa %>% class()
+
+mergers_seqtab.nochim %>% View()
+samdf %>% str()
+mergers_taxa$tax %>% str()
+
+
+all_ps <- merge_phyloseq(mergers_ps,R1_ps,R2_ps)
+
+
+
+# phyloseq::otu_table(mergers_seqtab.nochim, taxa_are_rows = FALSE),
+#                                  phyloseq::sample_data(samdf),
+#                                  phyloseq::tax_table(mergers_taxa$tax)
+
+
+phyloseq::otu_table()
+phyloseq::sample_data()
+phyloseq::tax_table(blast_tax_table)
+phyloseq::phy_tree() 
+
+
+
+
+
+
+mergers_taxa$tax
+
+
+
+all_ps@otu_table %>% View()
+all_ps@tax_table %>% View()
+
+
+
+
+smp_abd_ID_Final %>% colnames() %>% paste0(collapse = '",\n"') %>% cat()
+
+
+#create new tax table from BLASTn identifications
+blast_tax_table <- curated_smp_abd_ID %>% select(c("Curated ID",
+                        "Genus (BLASTn)",
+                        "Subfamily (BLASTn)",
+                        "Family (BLASTn)",
+                        "Suborder (BLASTn)",
+                        "Order (BLASTn)",
+                        "Subclass (BLASTn)",
+                        "Class (BLASTn)",
+                        "Phylum (BLASTn)",
+                        "Subphylum (BLASTn)",
+                        "Kingdom (BLASTn)",
+                        "ASV (Sequence)")) %>% 
+  unique() %>% 
+  # filter(!`Kingdom (BLASTn)` %in% c(NA,"NA")) %>% 
+  # filter(`Kingdom (BLASTn)` %in% c("Metazoa")) %>% 
+  as.data.frame() %>% 
+  `rownames<-`(.$`ASV (Sequence)`) %>% 
+  select(-c("ASV (Sequence)")) %>% 
+  as.matrix()
+  
+
+colnames(blast_tax_table) <- colnames(blast_tax_table) %>% str_replace(" ","_") %>% str_remove_all(pattern = "\\(|\\)")
+colnames(blast_tax_table) <- colnames(blast_tax_table) %>% str_remove_all(pattern = " \\(BLASTn\\)")
+
+
+
+all_ps@tax_table <- blast_tax_table #N'ao funciona
+
+mergers_seqtab.nochim_filt <- mergers_seqtab.nochim[(mergers_seqtab.nochim %>% rowSums()) != 0,] 
+
+
+mergers_seqtab.nochim_filt <- mergers_seqtab.nochim_filt[,colnames(mergers_seqtab.nochim_filt) %in% unique(curated_smp_abd_ID$`ASV (Sequence)`)]
+
+
+
+
+seqtab_FINAL <- mergers_seqtab.nochim_filt %>% as_tibble(rownames = "Sample") %>% 
+  mutate("SAMPLE" = str_remove_all(Sample,pattern = "EM118_|A|B")) %>% 
+  filter(str_detect(Sample,pattern = "EM118" )) %>% 
+  relocate("SAMPLE") %>% 
+  group_by(SAMPLE) %>% 
+  summarise(across(.cols = !contains("S"),
+                   .fns = sum,.names = "{col}")) %>% 
+  column_to_rownames("SAMPLE") %>% 
+  # select(-c("SAMPLE")) %>% 
+  as.matrix()
+  
+
+
+rownames(seqtab_FINAL) <- seqtab_FINAL
+
+mergers_seqtab.nochim_filt %>% dim()
+
+
+
+
+
+samdf %>% colnames()
+
+
+samdf_FINAL <- samdf %>% 
+  as_tibble() %>% 
+  filter(Type %in% c("Sample")) %>% 
+  # select(c("Unique_File_name","Metadata 1","Metadata 2")) %>% 
+  select(c(
+    # "Unique_File_name",
+    "Metadata 1"
+    # ,"Metadata 2"
+    )) %>% 
+  rename("Metadata_1" = "Metadata 1"
+         # ,         "Metadata_2" = "Metadata 2"
+         ) %>%
+  unique() %>% 
+    as.data.frame()
+# %>% 
+#   column_to_rownames("Metadata_1") 
+rownames(samdf_FINAL) <- samdf_FINAL$Metadata_1
+
+
+mergers_seqtab.nochim %>% str
+
+
+otu_table(mergers_seqtab.nochim, taxa_are_rows = FALSE) %>% View()
+sample_data(samdf[!samdf$Unique_File_name %in% samples_out,1:6]) %>% View()
+tax_table(blast_tax_table) %>% View()
+
+
+all_ps_FINAL <- phyloseq::phyloseq(otu_table(seqtab_FINAL, taxa_are_rows = FALSE),
+                                   sample_data(samdf_FINAL),
+                                   tax_table(blast_tax_table))
+
+
+blast_tax_table %>% View()
+
+
+which(is.na(otu_table(mergers_seqtab.nochim, taxa_are_rows = FALSE)), arr.ind = TRUE)
+
+all_ps_blast
+plot_heatmap(all_ps_blast,na.value = "#ffffff")
+
+rowSums(otu_table(mergers_seqtab.nochim, taxa_are_rows = FALSE))
+
+all_ps_blast %>% phyloseq::plot_bar(fill = "Order")
+
+
+
+
+all_ps_blast_ord <- ordinate(all_ps_FINAL, "NMDS", "bray")
+
+phyloseq::plot_ordination(physeq = all_ps_FINAL,type = "samples",
+                                             ordination = all_ps_blast_ord,
+                                             color = "Metadata_1")
+
+
+phyloseq::plot_ordination(physeq = all_ps_FINAL,
+                                             ordination = all_ps_blast_ord,
+                          type="split", color="Phylum", shape="Metadata 2", label="SampleType", title="split")
+
+
+# GP.ord <- ordinate(GP1, "NMDS", "bray")
+# p1 = plot_ordination(GP1, GP.ord, type="taxa", color="Phylum", title="taxa")
+plot_richness(all_ps_FINAL, color = "Metadata_1")
+```
+
+#References
+
+* Callahan BJ, McMurdie PJ, Rosen MJ, Han AW, Johnson AJ, Holmes SP. *DADA2: High-resolution sample inference from Illumina amplicon data.* Nat Methods. 2016 Jul;13(7):581-3. doi: 10.1038/nmeth.3869. Epub 2016 May 23. PMID: 27214047; PMCID: PMC4927377.
+
+* Martin M. **Cutadapt removes adapter sequences from high-throughput sequencing reads.** EMBnet.journal. 2011;17(1):10–12. doi: 10.14806/ej.17.1.200. -
+
+* McMurdie PJ, Holmes S. *phyloseq: an R package for reproducible interactive analysis and graphics of microbiome census data.* PLoS One. 2013 Apr 22;8(4):e61217. doi: 10.1371/journal.pone.0061217. PMID: 23630581; PMCID: PMC3632530.
+
+* R Core Team (2020). **R: A language and environment for statistical computing.** R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
+
+* Wang Q, Garrity GM, Tiedje JM, Cole JR. *Naive Bayesian classifier for rapid assignment of rRNA sequences into the new bacterial taxonomy.* Appl Environ Microbiol. 2007 Aug;73(16):5261-7. doi: 10.1128/AEM.00062-07. Epub 2007 Jun 22. PMID: 17586664; PMCID: PMC1950982.
+
+ 
+\pagebreak
+
+
+
+**This is a partial report, intended to show the current state of analyses. Many procedures and conclusions might change as the pipeline evolves. If you notice errors/mistakes/typos, or have any suggestions, we would be glad to know. _heronoh@gmail.com_**
+
+
+            
