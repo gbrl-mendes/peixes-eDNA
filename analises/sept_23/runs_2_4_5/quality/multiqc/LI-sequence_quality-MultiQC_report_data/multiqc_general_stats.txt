@@ -1,0 +1,3 @@
+Sample	FastQC_mqc-generalstats-fastqc-percent_duplicates	FastQC_mqc-generalstats-fastqc-percent_gc	FastQC_mqc-generalstats-fastqc-avg_sequence_length	FastQC_mqc-generalstats-fastqc-percent_fails	FastQC_mqc-generalstats-fastqc-total_sequences
+MiFish_F002_MiFish_R002.R1	96.4912530425747	49.0	129.17438401207065	36.36363636363637	70253.0
+MiFish_F002_MiFish_R002.R2	94.32479751754373	48.0	121.34380026475738	45.45454545454545	70253.0
